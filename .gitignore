@@ -1,0 +1,4 @@
+/config.local.php
+/data/
+/.venv/
+__pycache__/
