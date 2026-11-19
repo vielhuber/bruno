@@ -32,6 +32,7 @@ $label = match ($view) {
     'create' => 'Stapel erstellen',
     'study' => 'Wiederholen',
     'lesson' => 'Vorbereiten',
+    'backups' => 'Backups',
     default => 'Übersicht',
 };
 $selectedType = input($_POST, key: 'type') ?: 'topic';
@@ -91,6 +92,10 @@ if ($view === 'create' && !isset($_POST['type'])) {
                 <a href="<?= $route('create') ?>" <?= $view === 'create' ? 'aria-current="page"' : '' ?>>
                     <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8.5 12h7m-3.5-3.5v7"/></svg>
                     Erstellen
+                </a>
+                <a href="<?= $route('backups') ?>" <?= $view === 'backups' ? 'aria-current="page"' : '' ?>>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="6" rx="1.5"/><rect x="3" y="14" width="18" height="6" rx="1.5"/><path d="M7 7h1m-1 10h1"/></svg>
+                    Backups
                 </a>
             </nav>
             <div class="sidebar-foot">
@@ -157,6 +162,52 @@ if ($view === 'create' && !isset($_POST['type'])) {
                         </div>
                     <?php endif; ?>
                 </section>
+            <?php break;
+                case 'backups': ?>
+                <?php
+                $backups = $data['backups'];
+                    $latest = $backups[0]['createdAt'] ?? null;
+                    $formatSize = static fn (int $bytes): string => match (true) {
+                        $bytes >= 1_048_576 => number_format($bytes / 1_048_576, decimals: 2, decimal_separator: ',', thousands_separator: '.') . ' MiB',
+                        $bytes >= 1024 => number_format($bytes / 1024, decimals: 2, decimal_separator: ',', thousands_separator: '.') . ' KiB',
+                        default => $bytes . ' B',
+                    };
+                    ?>
+                <header class="screen-header">
+                    <div><h1>Backups</h1><p class="muted">Anki-Sammlung und Medien</p></div>
+                </header>
+                <dl class="stats backup-stats" aria-label="Backup-Status">
+                    <div class="stat-accent"><dt>Anzahl</dt><dd><?= count($backups) ?></dd></div>
+                    <div><dt>Letztes Backup</dt>
+                        <dd>
+                            <?php if ($latest !== null): ?>
+                                <time datetime="<?= $latest->format(DATE_ATOM) ?>"><?= $latest->format('d.m.Y') ?> <span class="small muted"><?= $latest->format('H:i:s') ?></span></time>
+                            <?php endif; ?>
+                            <?php if ($latest === null): ?>–<?php endif; ?>
+                        </dd>
+                    </div>
+                    <div><dt>Gesamtgröße</dt><dd><?= $formatSize(array_sum(array_column($backups, 'bytes'))) ?></dd></div>
+                </dl>
+                <?php if (!$backups): ?><p class="panel muted">Noch keine Backups.</p><?php endif; ?>
+                <?php if ($backups): ?>
+                    <section aria-labelledby="backup-history">
+                        <header class="section-header"><h2 id="backup-history">Verlauf</h2><span class="small muted">Zeitzone: Berlin</span></header>
+                        <div class="panel backup-list">
+                            <table aria-labelledby="backup-history">
+                                <thead><tr><th scope="col">Erstellt</th><th scope="col">Größe</th></tr></thead>
+                                <tbody>
+                                    <?php foreach ($backups as $backup): ?>
+                                        <?php $createdAt = $backup['createdAt']; ?>
+                                        <tr>
+                                            <td><time datetime="<?= $createdAt->format(DATE_ATOM) ?>"><?= $createdAt->format('d.m.Y') ?> <span class="muted"><?= $createdAt->format('H:i:s') ?></span></time></td>
+                                            <td><?= $formatSize($backup['bytes']) ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                <?php endif; ?>
             <?php break;
                 case 'create': ?>
                 <a class="back-link" href="/">← Zur Übersicht</a>

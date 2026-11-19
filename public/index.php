@@ -243,6 +243,7 @@ try {
         'home', 'create' => ['decks' => $anki->call('list', $request)],
         'lesson' => ['lesson' => $anki->call('lesson', $request)],
         'study' => $anki->call('study', $request),
+        'backups' => ['backups' => (new BackupHistory($config['data_dir']))->entries()],
         default => throw new AppException('Diese Seite gibt es nicht.', 404),
     };
 } catch (AppException | PDOException $error) {
