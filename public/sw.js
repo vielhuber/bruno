@@ -1,6 +1,6 @@
-let cacheName = "bruno-shell-v2";
+let cacheName = "bruno-shell-v3";
 let shell = [
-  "/assets/app.css",
+  "/assets/app.css?v=3",
   "/assets/app.js",
   "/assets/icon.svg",
   "/assets/offline.html",
@@ -10,7 +10,11 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
       .open(cacheName)
-      .then((cache) => cache.addAll(shell))
+      .then((cache) =>
+        cache.addAll(
+          shell.map((asset) => new Request(asset, { cache: "reload" })),
+        ),
+      )
       .then(() => self.skipWaiting()),
   );
 });
@@ -43,7 +47,7 @@ self.addEventListener("fetch", (event) => {
     );
     return;
   }
-  if (!url.search && shell.includes(url.pathname)) {
+  if (shell.includes(url.pathname + url.search)) {
     event.respondWith(
       fetch(event.request).catch(() => caches.match(event.request)),
     );
