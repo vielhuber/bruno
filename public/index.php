@@ -22,7 +22,9 @@ $_SESSION['csrf'] ??= bin2hex(random_bytes(32));
 
 $anki = new AnkiBridge($config['python'], $config['data_dir']);
 $gateway = new Gateway($config['ai_key'], $config['ai_model']);
+$backupHistory = new BackupHistory($config['data_dir']);
 $account = $_SESSION['account'] ?? null;
+$canDeleteBackups = $account !== null && $account['email'] === $config['backup_delete_email'];
 $csrf = $_SESSION['csrf'];
 $flash = $_SESSION['flash'] ?? '';
 unset($_SESSION['flash']);
@@ -83,6 +85,15 @@ try {
         if ($verb === 'backup') {
             $anki->call('backup', ['manual' => true]);
             $_SESSION['flash'] = 'Backup erstellt.';
+            go('backups');
+        }
+
+        if ($verb === 'delete-backup') {
+            if (!$canDeleteBackups) {
+                throw new AppException('Keine Berechtigung zum Löschen von Backups.', 403);
+            }
+            $backupHistory->delete(input($_POST, key: 'backup', maximum: 64));
+            $_SESSION['flash'] = 'Backup gelöscht.';
             go('backups');
         }
 
@@ -250,7 +261,7 @@ try {
         'review' => ['decks' => array_filter($anki->call('list', $request), static fn (array $deck): bool => $deck['due'] > 0)],
         'lesson' => ['lesson' => $anki->call('lesson', $request)],
         'study' => $anki->call('study', $request),
-        'backups' => ['backups' => (new BackupHistory($config['data_dir']))->entries()],
+        'backups' => ['backups' => $backupHistory->entries()],
         default => throw new AppException('Diese Seite gibt es nicht.', 404),
     };
 } catch (AppException | PDOException $error) {

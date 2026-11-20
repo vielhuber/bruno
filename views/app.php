@@ -204,7 +204,18 @@ if ($view === 'create' && !isset($_POST['type'])) {
                                     <?php foreach ($backups as $backup): ?>
                                         <?php $createdAt = $backup['createdAt']; ?>
                                         <tr>
-                                            <td><time datetime="<?= $createdAt->format(DATE_ATOM) ?>"><?= $createdAt->format('d.m.Y') ?> <span class="muted"><?= $createdAt->format('H:i:s') ?></span></time></td>
+                                            <td>
+                                                <time datetime="<?= $createdAt->format(DATE_ATOM) ?>"><?= $createdAt->format('d.m.Y') ?> <span class="muted"><?= $createdAt->format('H:i:s') ?></span></time>
+                                                <?php if ($canDeleteBackups): ?>
+                                                    <details class="backup-delete small">
+                                                        <summary>Löschen</summary>
+                                                        <form method="post" action="<?= $route('backups') ?>">
+                                                            <?php $hidden(verb: 'delete-backup', fields: ['backup' => $backup['id']]); ?>
+                                                            <button class="button secondary" type="submit">Endgültig löschen</button>
+                                                        </form>
+                                                    </details>
+                                                <?php endif; ?>
+                                            </td>
                                             <td><?= $formatSize($backup['bytes']) ?></td>
                                         </tr>
                                     <?php endforeach; ?>

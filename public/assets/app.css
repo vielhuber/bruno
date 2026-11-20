@@ -102,6 +102,9 @@ img, video, audio { max-width: 100%; }
 .backup-list td { border-top: 1px solid var(--line); }
 .backup-list :is(th, td):last-child { text-align: end; }
 .backup-list time { display: inline-flex; flex-wrap: wrap; column-gap: 10px; }
+.backup-delete, .backup-delete form { margin-top: 6px; }
+.backup-delete summary { width: fit-content; color: #ffb9c5; cursor: pointer; }
+.backup-delete .button { border-color: #774957; color: #ffb9c5; }
 .deck-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .deck { min-width: 0; display: flex; flex-direction: column; }
 .deck-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
