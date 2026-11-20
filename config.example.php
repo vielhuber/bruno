@@ -9,5 +9,4 @@ return [
     'ai_model' => 'gemini-3.5-flash-lite',
     'fal_key' => '',
     'cron_password_hash' => '',
-    'backup_delete_email' => '',
 ];

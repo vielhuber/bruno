@@ -24,7 +24,6 @@ $anki = new AnkiBridge($config['python'], $config['data_dir']);
 $gateway = new Gateway($config['ai_key'], $config['ai_model']);
 $backupHistory = new BackupHistory($config['data_dir']);
 $account = $_SESSION['account'] ?? null;
-$canDeleteBackups = $account !== null && $account['email'] === $config['backup_delete_email'];
 $csrf = $_SESSION['csrf'];
 $flash = $_SESSION['flash'] ?? '';
 unset($_SESSION['flash']);
@@ -89,9 +88,6 @@ try {
         }
 
         if ($verb === 'delete-backup') {
-            if (!$canDeleteBackups) {
-                throw new AppException('Keine Berechtigung zum Löschen von Backups.', 403);
-            }
             $backupHistory->delete(input($_POST, key: 'backup', maximum: 64));
             $_SESSION['flash'] = 'Backup gelöscht.';
             go('backups');

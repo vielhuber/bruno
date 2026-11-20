@@ -197,9 +197,6 @@ if ($view === 'create' && !isset($_POST['type'])) {
                 <?php if ($backups): ?>
                     <section aria-labelledby="backup-history">
                         <header class="section-header"><h2 id="backup-history">Verlauf</h2><span class="small muted">Zeitzone: Berlin</span></header>
-                        <?php if (!$canDeleteBackups): ?>
-                            <p class="notice" id="backup-delete-permission">Backups können nur mit dem dafür freigegebenen Konto gelöscht werden.</p>
-                        <?php endif; ?>
                         <div class="panel backup-list">
                             <table aria-labelledby="backup-history">
                                 <thead><tr><th scope="col">Erstellt</th><th scope="col">Größe</th></tr></thead>
@@ -209,20 +206,13 @@ if ($view === 'create' && !isset($_POST['type'])) {
                                         <tr>
                                             <td>
                                                 <time datetime="<?= $createdAt->format(DATE_ATOM) ?>"><span><?= $createdAt->format('d.m.Y') ?></span> <span class="muted"><?= $createdAt->format('H:i:s') ?></span></time>
-                                                <?php if ($canDeleteBackups): ?>
-                                                    <details class="backup-delete">
-                                                        <summary class="button secondary">Backup löschen</summary>
-                                                        <form method="post" action="<?= $route('backups') ?>">
-                                                            <?php $hidden(verb: 'delete-backup', fields: ['backup' => $backup['id']]); ?>
-                                                            <button class="button secondary" type="submit">Endgültig löschen</button>
-                                                        </form>
-                                                    </details>
-                                                <?php endif; ?>
-                                                <?php if (!$canDeleteBackups): ?>
-                                                    <div class="backup-delete">
-                                                        <button class="button secondary" type="button" disabled aria-describedby="backup-delete-permission">Backup löschen</button>
-                                                    </div>
-                                                <?php endif; ?>
+                                                <details class="backup-delete">
+                                                    <summary class="button secondary">Backup löschen</summary>
+                                                    <form method="post" action="<?= $route('backups') ?>">
+                                                        <?php $hidden(verb: 'delete-backup', fields: ['backup' => $backup['id']]); ?>
+                                                        <button class="button secondary" type="submit">Endgültig löschen</button>
+                                                    </form>
+                                                </details>
                                             </td>
                                             <td><?= $formatSize($backup['bytes']) ?></td>
                                         </tr>
