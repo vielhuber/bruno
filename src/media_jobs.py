@@ -1,3 +1,4 @@
+import base64
 import fcntl
 import json
 import re
@@ -8,8 +9,9 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 from collection_store import collection, metadata, save_deck, save_media, save_note, unpack
 
+IMAGE_ENDPOINT = 'https://ai.rebuhleiv.xyz/v1/images/generations'
 ENDPOINTS = {
-    'image': 'fal-ai/flux/schnell',
+    'image': 'fal-ai/flux/schnell',  # only for previously submitted images
     'audio': 'fal-ai/elevenlabs/tts/turbo-v2.5',
     'video': 'fal-ai/wan/v2.2-a14b/text-to-video/turbo',
 }
@@ -22,9 +24,9 @@ class NoRedirect(HTTPRedirectHandler):
         return None
 
 
-def fetch(url, headers=None, payload=None, limit=512 * 1024):
+def fetch(url, headers=None, payload=None, limit=512 * 1024, timeout=12):
     request = Request(url, data=json.dumps(payload).encode() if payload is not None else None, headers=headers or {})
-    with build_opener(NoRedirect).open(request, timeout=12) as response:
+    with build_opener(NoRedirect).open(request, timeout=timeout) as response:
         data = response.read(limit + 1)
         if len(data) > limit:
             raise ValueError('Media response exceeds size limit')
@@ -40,6 +42,16 @@ def safe_queue_url(url, kind, is_status):
     return 'https://queue.fal.run' + parsed.path
 
 
+def image_file(data):
+    if data.startswith(b'\x89PNG\r\n\x1a\n'):
+        return 'png', data
+    if data.startswith(b'\xff\xd8\xff'):
+        return 'jpg', data
+    if data.startswith(b'RIFF') and data[8:12] == b'WEBP':
+        return 'webp', data
+    raise ValueError('Unexpected image format')
+
+
 def result_file(result, kind):
     if kind == 'image' and any(result.get('has_nsfw_concepts', [])):
         raise ValueError('Image did not pass safety checks')
@@ -49,12 +61,7 @@ def result_file(result, kind):
         raise ValueError('Unexpected media URL')
     data = fetch(url.geturl(), limit=30 * 1024 * 1024)
     if kind == 'image':
-        if data.startswith(b'\x89PNG\r\n\x1a\n'):
-            return 'png', data
-        if data.startswith(b'\xff\xd8\xff'):
-            return 'jpg', data
-        if data.startswith(b'RIFF') and data[8:12] == b'WEBP':
-            return 'webp', data
+        return image_file(data)
     if kind == 'audio' and (data.startswith(b'ID3') or (len(data) > 2 and data[0] == 255 and data[1] & 224 == 224)):
         return 'mp3', data
     if kind == 'video' and data[4:8] == b'ftyp':
@@ -115,8 +122,8 @@ def pending_jobs(col):
     return sorted(jobs, key=lambda item: item[3].get('checked', 0))
 
 
-def run_jobs(directory, key):
-    if not key:
+def run_jobs(directory, ai_key, fal_key):
+    if not (ai_key or fal_key):
         return {'configured': False}
     directory.mkdir(mode=0o700, parents=True, exist_ok=True)
     with (directory / 'media-worker.lock').open('a') as lock:
@@ -126,15 +133,21 @@ def run_jobs(directory, key):
             return {'busy': True}
         with collection(directory) as col:
             jobs = pending_jobs(col)
-        headers = {'Authorization': 'Key ' + key, 'Content-Type': 'application/json', 'X-Fal-Store-IO': '0'}
+        headers = {'Authorization': 'Key ' + fal_key, 'Content-Type': 'application/json', 'X-Fal-Store-IO': '0'}
         handled = 0
-        for deck_id, note_id, kind, job, prompt in jobs[:8]:
+        image_requested = False
+        for deck_id, note_id, kind, job, prompt in jobs:
+            if handled >= 8:
+                break
             state = job['state']
             file = None
             if state == 'submitting':
                 if time.time() - job.get('started', 0) > SUBMISSION_TIMEOUT:
                     with collection(directory) as col:
                         change_job(col, deck_id, note_id, kind, job, job | {'state': 'unknown'})
+                continue
+            image_request = kind == 'image' and state == 'queued'
+            if not (ai_key if image_request else fal_key) or (image_request and image_requested):
                 continue
             expected = job
             if state == 'queued':
@@ -144,10 +157,23 @@ def run_jobs(directory, key):
             if not claimed:
                 continue
             try:
-                if state == 'queued':
-                    if kind == 'image':
-                        payload = {'prompt': prompt, 'image_size': 'square', 'num_images': 1, 'enable_safety_checker': True}
-                    elif kind == 'audio':
+                if image_request:
+                    image_requested = True
+                    payload = {
+                        'model': 'gpt-image-2',
+                        'prompt': 'Kindgerechte Lernillustration ohne Schrift: ' + prompt,
+                        'size': '1024x1024', 'quality': 'low', 'output_format': 'jpeg', 'n': 1,
+                    }
+                    response = json.loads(fetch(IMAGE_ENDPOINT, {
+                        'Authorization': 'Bearer ' + ai_key, 'Content-Type': 'application/json',
+                    }, payload, limit=8 * 1024 * 1024, timeout=55))
+                    update = {'state': 'failed'}
+                    encoded = (response.get('data') or [{}])[0].get('b64_json')
+                    if encoded:
+                        file = image_file(base64.b64decode(encoded, validate=True))
+                        update = {'state': 'ready'}
+                elif state == 'queued':
+                    if kind == 'audio':
                         payload = {'text': prompt, 'language_code': 'de', 'enable_safety_checker': True}
                     else:
                         payload = {'prompt': 'Kurze, freundliche, stumme Lern-Animation, kein eingeblendeter Text: '

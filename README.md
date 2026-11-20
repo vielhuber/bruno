@@ -18,7 +18,7 @@ unset password
 
 Fehlt auf dem Shared Host `ensurepip`, die beiden Python-Schritte durch `python3 -m venv --without-pip .venv` und `python3 -m pip --python .venv/bin/python install -r requirements.txt` ersetzen.
 
-`config.local.php`: privates Datenverzeichnis, KI-Schlüssel für `ai.rebuhleiv.xyz` und optional den fal.ai-Schlüssel setzen. Web und Cron müssen als derselbe Benutzer laufen. Vorlagen dürfen höchstens 8 MB groß sein; bei großen Büchern einzelne Kapitel hochladen. Schülerunterlagen vor der KI-Verarbeitung anonymisieren.
+`config.local.php`: privates Datenverzeichnis und KI-Schlüssel für `ai.rebuhleiv.xyz` (Karten, Bewertungen, Bild-Eselsbrücken) setzen. Der fal.ai-Schlüssel ist nur für Audio und Video nötig. Web und Cron müssen als derselbe Benutzer laufen. Vorlagen dürfen höchstens 8 MB groß sein; bei großen Büchern einzelne Kapitel hochladen. Schülerunterlagen vor der KI-Verarbeitung anonymisieren.
 
 ## Anki
 

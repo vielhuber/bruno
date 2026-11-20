@@ -347,7 +347,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                                         <?php if ($card['image'] === '' && $card['imageState'] !== ''): ?>
                                             <p class="small muted"><?= in_array($card['imageState'], ['failed', 'unknown'], strict: true) ? 'Merkbild nicht verfügbar.' : 'Merkbild in Arbeit.' ?></p>
                                         <?php endif; ?>
-                                        <?php if ($card['imageState'] === 'failed' && $settings['fal']): ?>
+                                        <?php if ($card['imageState'] === 'failed' && $settings['ai']): ?>
                                             <form method="post" action="<?= $route('study', $deckId) ?>">
                                                 <?php $hidden(verb: 'retry-image', fields: $cardFields); ?>
                                                 <button class="button secondary" type="submit">Bild erneut beauftragen (kostenpflichtig)</button>

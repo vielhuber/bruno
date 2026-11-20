@@ -119,10 +119,6 @@ try {
             if ($type === 'test' && $document === null) {
                 throw new AppException('Bitte einen anonymisierten Test hochladen.', 422);
             }
-            if ($type === 'vocabulary' && !$settings['fal']) {
-                throw new AppException('Die Bildgenerierung für Vokabelstapel ist noch nicht eingerichtet.', 503);
-            }
-
             $content = $gateway->create($title, $focus, $type, $document, $owned['text'] ?? '');
             $result = $anki->call('generate', $request + $content + [
                 'title' => $title,
@@ -146,8 +142,8 @@ try {
         }
 
         if ($verb === 'retry-image') {
-            if (!$settings['fal']) {
-                throw new AppException('fal.ai ist noch nicht eingerichtet.', 503);
+            if (!$settings['ai']) {
+                throw new AppException('Der KI-Zugang ist noch nicht eingerichtet.', 503);
             }
             $anki->call('retry-image', $request + ['card' => (int) input($_POST, key: 'card')]);
             $_SESSION['flash'] = 'Merkbild erneut beauftragt.';

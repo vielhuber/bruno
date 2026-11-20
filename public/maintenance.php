@@ -36,7 +36,7 @@ try {
     $result = match ($job) {
         'backup' => $anki->call('backup'),
         'sync' => $anki->call('sync', ['endpoint' => $config['sync_endpoint'] ?? '']),
-        'media' => $anki->call('jobs', ['key' => $config['fal_key']]),
+        'media' => $anki->call('jobs', ['aiKey' => $config['ai_key'], 'falKey' => $config['fal_key']]),
     };
     echo json_encode($result, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
 } catch (AppException $error) {

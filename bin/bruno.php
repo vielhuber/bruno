@@ -34,7 +34,7 @@ try {
             'endpoint' => $config['sync_endpoint'] ?? '',
         ]),
         'backup' => $anki->call('backup'),
-        'media' => $anki->call('jobs', ['key' => $config['fal_key']]),
+        'media' => $anki->call('jobs', ['aiKey' => $config['ai_key'], 'falKey' => $config['fal_key']]),
         default => throw new AppException('Kommandos: user, assign, sync-login, sync, backup, media.'),
     };
     echo json_encode($result, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR), PHP_EOL;

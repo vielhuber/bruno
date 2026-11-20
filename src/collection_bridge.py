@@ -74,7 +74,7 @@ def sync(col, directory, request):
 def dispatch(directory, request):
     action = request['action']
     if action == 'jobs':
-        return run_jobs(directory, request['key'])
+        return run_jobs(directory, request['aiKey'], request['falKey'])
     with collection(directory) as col:
         if action == 'backup':
             return backup(col, directory, manual=request.get('manual', False))
