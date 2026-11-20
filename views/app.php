@@ -144,24 +144,24 @@ if ($view === 'create' && !isset($_POST['type'])) {
                 <?php $review = $view === 'review'; ?>
                 <header class="screen-header"><h1><?= escape($label) ?></h1></header>
                 <?php if (!$data['decks']): ?>
-                    <p class="panel muted"><?= $review ? 'Keine Karten fällig.' : 'Noch keine Stapel.' ?></p>
+                    <p class="panel muted">Noch keine Stapel.</p>
                 <?php endif; ?>
                 <?php if ($data['decks']): ?>
                     <div class="deck-grid">
                         <?php foreach ($data['decks'] as $deck): ?>
-                            <?php $completed = !$review && $deck['total'] > 0 && $deck['due'] === 0; ?>
+                            <?php $notDue = $review && $deck['due'] === 0; ?>
                             <article class="panel deck">
                                 <div class="deck-top">
                                     <span class="deck-icon<?= $deck['vocabulary'] ? ' vocabulary' : '' ?>" aria-hidden="true"><?= $deck['vocabulary'] ? 'Aa' : '▤' ?></span>
-                                    <?php if ($review): ?><span class="badge"><?= $deck['due'] ?> fällig</span><?php endif; ?>
+                                    <?php if ($review && !$notDue): ?><span class="badge"><?= $deck['due'] ?> fällig</span><?php endif; ?>
                                 </div>
                                 <h2><?= escape($deck['name']) ?></h2>
                                 <p class="muted small"><?= $deck['total'] ?> <?= $deck['total'] === 1 ? 'Karte' : 'Karten' ?></p>
                                 <div class="inline-actions">
-                                    <?php if ($completed): ?>
-                                        <span class="badge">Erledigt</span>
+                                    <?php if ($notDue): ?>
+                                        <span class="badge">Keine Karten fällig</span>
                                     <?php endif; ?>
-                                    <?php if (!$completed): ?>
+                                    <?php if (!$notDue): ?>
                                         <a class="button primary" href="<?= $route($review ? 'study' : 'lesson', $deck['id']) ?>"><?= escape($label) ?></a>
                                     <?php endif; ?>
                                 </div>

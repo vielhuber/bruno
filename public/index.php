@@ -253,8 +253,7 @@ try {
 
     $data = match ($view) {
         'login' => [],
-        'home', 'create', 'learn' => ['decks' => $anki->call('list', $request)],
-        'review' => ['decks' => array_filter($anki->call('list', $request), static fn (array $deck): bool => $deck['due'] > 0)],
+        'home', 'create', 'learn', 'review' => ['decks' => $anki->call('list', $request)],
         'lesson' => ['lesson' => $anki->call('lesson', $request)],
         'study' => $anki->call('study', $request),
         'backups' => ['backups' => $backupHistory->entries()],
