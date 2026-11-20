@@ -21,6 +21,7 @@ session_start([
 $_SESSION['csrf'] ??= bin2hex(random_bytes(32));
 
 $anki = new AnkiBridge($config['python'], $config['data_dir']);
+$sync = new AnkiSync($anki, $config['data_dir'], $config['sync_endpoint'] ?? '');
 $gateway = new Gateway($config['ai_key'], $config['ai_model']);
 $backupHistory = new BackupHistory($config['data_dir']);
 $account = $_SESSION['account'] ?? null;
@@ -91,6 +92,21 @@ try {
             $backupHistory->delete(input($_POST, key: 'backup', maximum: 64));
             $_SESSION['flash'] = 'Backup gelöscht.';
             go('backups');
+        }
+
+        if ($verb === 'sync-now') {
+            session_write_close();
+            ignore_user_abort(enable: true);
+            set_time_limit(seconds: 0);
+            $sync->run(manual: true);
+            go('sync');
+        }
+
+        if ($verb === 'sync-interval') {
+            $minutes = filter_var(input($_POST, key: 'interval'), FILTER_VALIDATE_INT);
+            $sync->setInterval($minutes === false ? 0 : $minutes);
+            $_SESSION['flash'] = 'Synchronisationsintervall gespeichert.';
+            go('sync');
         }
 
         if ($verb === 'generate') {
@@ -250,6 +266,7 @@ try {
         'lesson' => ['lesson' => $anki->call('lesson', $request)],
         'study' => $anki->call('study', $request),
         'backups' => ['backups' => $backupHistory->entries()],
+        'sync' => ['sync' => $sync->status()],
         default => throw new AppException('Diese Seite gibt es nicht.', 404),
     };
 } catch (AppException | PDOException $error) {
@@ -273,7 +290,14 @@ try {
             $data['decks'] = [];
         }
     }
-    if ($account === null || $verb !== 'generate') {
+    if ($account !== null && $view === 'sync' && in_array($verb, ['sync-now', 'sync-interval'], strict: true)) {
+        try {
+            $data['sync'] = $sync->status();
+        } catch (AppException) {
+            $data = [];
+        }
+    }
+    if ($account === null || ($verb !== 'generate' && !isset($data['sync']))) {
         $view = $account === null ? 'login' : 'error';
     }
 }

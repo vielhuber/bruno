@@ -8,6 +8,7 @@ use finfo;
 
 require_once __DIR__ . '/AppException.php';
 require_once __DIR__ . '/AnkiBridge.php';
+require_once __DIR__ . '/AnkiSync.php';
 require_once __DIR__ . '/BackupHistory.php';
 require_once __DIR__ . '/Credentials.php';
 require_once __DIR__ . '/Gateway.php';

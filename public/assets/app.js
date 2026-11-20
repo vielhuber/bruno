@@ -241,6 +241,13 @@ class Editor {
   }
 }
 
+let $syncForm = document.querySelector("[data-sync]");
+$syncForm?.addEventListener("submit", () => {
+  let $submit = $syncForm.querySelector('button[type="submit"]');
+  $submit.disabled = true;
+  $submit.textContent = "Synchronisierung läuft …";
+});
+
 for (let Module of [Study, Editor]) {
   for (let $element of document.querySelectorAll(Module.SELECTOR)) {
     new Module($element).ready();

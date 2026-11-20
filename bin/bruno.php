@@ -9,6 +9,7 @@ require __DIR__ . '/../src/bootstrap.php';
 $action = $argv[1] ?? '';
 $email = $argv[2] ?? '';
 $anki = new AnkiBridge($config['python'], $config['data_dir']);
+$sync = new AnkiSync($anki, $config['data_dir'], $config['sync_endpoint'] ?? '');
 
 try {
     if ($action === 'user') {
@@ -29,10 +30,10 @@ try {
             'password' => rtrim((string) fgets(STDIN), characters: "\r\n") ?: throw new AppException('Passwort fehlt.'),
             'endpoint' => $config['sync_endpoint'] ?? '',
         ]),
-        'sync' => $anki->call('sync', [
-            'initialUpload' => ($argv[2] ?? '') === '--initial-upload',
-            'endpoint' => $config['sync_endpoint'] ?? '',
-        ]),
+        'sync' => $sync->run(
+            manual: ($argv[2] ?? '') !== '--scheduled',
+            initialUpload: ($argv[2] ?? '') === '--initial-upload',
+        ),
         'backup' => $anki->call('backup'),
         'media' => $anki->call('jobs', ['aiKey' => $config['ai_key'], 'falKey' => $config['fal_key']]),
         default => throw new AppException('Kommandos: user, assign, sync-login, sync, backup, media.'),

@@ -33,6 +33,7 @@ $label = match ($view) {
     'review', 'study' => 'Wiederholen',
     'learn', 'lesson' => 'Lernen',
     'backups' => 'Backups',
+    'sync' => 'Anki-Sync',
     default => 'Übersicht',
 };
 $selectedType = input($_POST, key: 'type') ?: 'topic';
@@ -58,8 +59,8 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <link rel="icon" type="image/svg+xml" href="/assets/icon.svg?v=4">
     <link rel="apple-touch-icon" href="/assets/icon-192.png?v=4">
     <link rel="manifest" href="/manifest.webmanifest?v=4">
-    <link rel="stylesheet" href="/assets/app.css?v=7">
-    <script defer src="/assets/app.js?v=7"></script>
+    <link rel="stylesheet" href="/assets/app.css?v=8">
+    <script defer src="/assets/app.js?v=8"></script>
 </head>
 <body class="<?= $account === null ? 'guest' : 'signed-in' ?>">
 <?php if ($account === null): ?>
@@ -107,7 +108,10 @@ if ($view === 'create' && !isset($_POST['type'])) {
                     <span class="avatar" aria-hidden="true"><?= escape(mb_strtoupper(mb_substr($account['email'], start: 0, length: 1))) ?></span>
                     <span class="small account-email"><?= escape($account['email']) ?></span>
                 </div>
-                <a class="quiet" href="<?= $route('backups') ?>" <?= $view === 'backups' ? 'aria-current="page"' : '' ?>>Backups</a>
+                <div class="sidebar-actions">
+                    <a class="quiet" href="<?= $route('backups') ?>" <?= $view === 'backups' ? 'aria-current="page"' : '' ?>>Backups</a>
+                    <a class="quiet" href="<?= $route('sync') ?>" <?= $view === 'sync' ? 'aria-current="page"' : '' ?>>Anki-Sync</a>
+                </div>
                 <div class="sidebar-actions">
                     <button class="quiet" type="button" aria-expanded="false" aria-controls="install-help" data-install>App installieren</button>
                     <form method="post" action="/">
@@ -225,6 +229,57 @@ if ($view === 'create' && !isset($_POST['type'])) {
                         </div>
                     </section>
                 <?php endif; ?>
+            <?php break;
+                case 'sync': ?>
+                <?php
+                $syncStatus = $data['sync'];
+                    $syncLabel = match (true) {
+                        !$syncStatus['configured'] => 'Nicht eingerichtet',
+                        $syncStatus['running'] => 'Läuft',
+                        $syncStatus['result'] === 'success' => 'Erfolgreich',
+                        $syncStatus['result'] === 'failed' => 'Fehlgeschlagen',
+                        $syncStatus['result'] === 'started' => 'Unterbrochen',
+                        default => 'Noch kein Lauf erfasst',
+                    };
+                    $berlin = new \DateTimeZone('Europe/Berlin');
+                    ?>
+                <header class="screen-header">
+                    <div><h1>Anki-Sync</h1><p class="muted">bruno ↔ AnkiWeb · Karten, Lernstände und Medien</p></div>
+                    <div class="inline-actions">
+                        <a class="button secondary" href="<?= $route('sync') ?>">Aktualisieren</a>
+                        <form method="post" action="<?= $route('sync') ?>" data-sync>
+                            <?php $hidden(verb: 'sync-now'); ?>
+                            <button class="button primary" type="submit" <?= !$syncStatus['configured'] || $syncStatus['running'] ? 'disabled' : '' ?>>Jetzt synchronisieren</button>
+                        </form>
+                    </div>
+                </header>
+                <dl class="stats" aria-label="Synchronisationsstatus">
+                    <div class="stat-accent"><dt>Status</dt><dd><?= $syncLabel ?></dd></div>
+                    <?php foreach (['lastSuccess' => 'Zuletzt erfolgreich', 'lastAttempt' => 'Letzter Versuch'] as $field => $title): ?>
+                        <div><dt><?= $title ?></dt><dd>
+                            <?php if ($syncStatus[$field] === null): ?>–<?php endif; ?>
+                            <?php if ($syncStatus[$field] !== null): ?>
+                                <?php $instant = (new \DateTimeImmutable('@' . $syncStatus[$field]))->setTimezone($berlin); ?>
+                                <time datetime="<?= $instant->format(DATE_ATOM) ?>"><?= $instant->format('d.m.Y') ?> <span class="small muted"><?= $instant->format('H:i:s') ?></span></time>
+                            <?php endif; ?>
+                        </dd></div>
+                    <?php endforeach; ?>
+                </dl>
+                <?php if (!$syncStatus['running'] && $syncStatus['error'] !== null && $syncStatus['error'] !== $errorMessage): ?>
+                    <p class="notice error" role="alert"><?= escape($syncStatus['error']) ?></p>
+                <?php endif; ?>
+                <form class="panel form-grid" method="post" action="<?= $route('sync') ?>">
+                    <?php $hidden(verb: 'sync-interval'); ?>
+                    <label>Automatischer Abgleich
+                        <select name="interval" <?= $syncStatus['running'] ? 'disabled' : '' ?>>
+                            <?php foreach (AnkiSync::INTERVALS as $minutes): ?>
+                                <option value="<?= $minutes ?>" <?= $syncStatus['interval'] === $minutes ? 'selected' : '' ?>>Alle <?= $minutes ?> Minuten</option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+                    <p class="small muted">Gilt für alle Konten. Änderungen in Anki Desktop zuerst dort mit AnkiWeb synchronisieren. Zeiten: Berlin.</p>
+                    <button class="button secondary" type="submit" <?= $syncStatus['running'] ? 'disabled' : '' ?>>Intervall speichern</button>
+                </form>
             <?php break;
                 case 'create': ?>
                 <header class="screen-header"><h1>Stapel erstellen</h1></header>

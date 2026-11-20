@@ -33,9 +33,10 @@ set_time_limit(seconds: 0);
 
 try {
     $anki = new AnkiBridge($config['python'], $config['data_dir']);
+    $sync = new AnkiSync($anki, $config['data_dir'], $config['sync_endpoint'] ?? '');
     $result = match ($job) {
         'backup' => $anki->call('backup'),
-        'sync' => $anki->call('sync', ['endpoint' => $config['sync_endpoint'] ?? '']),
+        'sync' => $sync->run(),
         'media' => $anki->call('jobs', ['aiKey' => $config['ai_key'], 'falKey' => $config['fal_key']]),
     };
     echo json_encode($result, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
