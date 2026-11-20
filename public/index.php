@@ -240,7 +240,8 @@ try {
 
     $data = match ($view) {
         'login' => [],
-        'home', 'create' => ['decks' => $anki->call('list', $request)],
+        'home', 'create', 'learn' => ['decks' => $anki->call('list', $request)],
+        'review' => ['decks' => array_filter($anki->call('list', $request), static fn (array $deck): bool => $deck['due'] > 0)],
         'lesson' => ['lesson' => $anki->call('lesson', $request)],
         'study' => $anki->call('study', $request),
         'backups' => ['backups' => (new BackupHistory($config['data_dir']))->entries()],

@@ -30,8 +30,8 @@ $hidden = static function (string $verb, array $fields = []) use ($csrf): void {
 $label = match ($view) {
     'login' => 'Anmelden',
     'create' => 'Stapel erstellen',
-    'study' => 'Wiederholen',
-    'lesson' => 'Vorbereiten',
+    'review', 'study' => 'Wiederholen',
+    'learn', 'lesson' => 'Lernen',
     'backups' => 'Backups',
     default => 'Übersicht',
 };
@@ -85,13 +85,21 @@ if ($view === 'create' && !isset($_POST['type'])) {
         <aside class="sidebar">
             <a class="brand" href="/"><span class="brand-icon" aria-hidden="true">🎓</span> bruno</a>
             <nav aria-label="Hauptnavigation">
-                <a href="/" <?= in_array($view, ['home', 'lesson', 'study'], strict: true) ? 'aria-current="page"' : '' ?>>
+                <a href="/" <?= $view === 'home' ? 'aria-current="page"' : '' ?>>
                     <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg>
                     Übersicht
                 </a>
                 <a href="<?= $route('create') ?>" <?= $view === 'create' ? 'aria-current="page"' : '' ?>>
                     <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8.5 12h7m-3.5-3.5v7"/></svg>
                     Erstellen
+                </a>
+                <a href="<?= $route('learn') ?>" <?= in_array($view, ['learn', 'lesson'], strict: true) ? 'aria-current="page"' : '' ?>>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6a8 8 0 0 0-9-2v14a8 8 0 0 1 9 2 8 8 0 0 1 9-2V4a8 8 0 0 0-9 2Zm0 0v14"/></svg>
+                    Lernen
+                </a>
+                <a href="<?= $route('review') ?>" <?= in_array($view, ['review', 'study'], strict: true) ? 'aria-current="page"' : '' ?>>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 5v5h-5M4 19v-5h5m11-4a8 8 0 0 0-14-4m-2 8a8 8 0 0 0 14 4"/></svg>
+                    Wiederholen
                 </a>
                 <a href="<?= $route('backups') ?>" <?= $view === 'backups' ? 'aria-current="page"' : '' ?>>
                     <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="6" rx="1.5"/><rect x="3" y="14" width="18" height="6" rx="1.5"/><path d="M7 7h1m-1 10h1"/></svg>
@@ -124,44 +132,37 @@ if ($view === 'create' && !isset($_POST['type'])) {
                     $due = array_sum(array_column($decks, 'due'));
                     $new = array_sum(array_column($decks, 'new'));
                     ?>
-                <header class="screen-header">
-                    <h1>Übersicht</h1>
-                    <a class="button secondary" href="<?= $route('create') ?>"><span aria-hidden="true">＋</span> Neuer Stapel</a>
-                </header>
+                <header class="screen-header"><h1>Übersicht</h1></header>
                 <dl class="stats" aria-label="Lernstand">
                     <div class="stat-accent"><dt>Jetzt bereit</dt><dd><?= $due ?></dd></div>
                     <div><dt>Davon neu</dt><dd><?= $new ?></dd></div>
                     <div><dt>Stapel</dt><dd><?= count($decks) ?></dd></div>
                 </dl>
-                <section aria-labelledby="deck-title">
-                    <header class="section-header">
-                        <h2 id="deck-title">Meine Stapel</h2>
-                        <?php if ($due > 0): ?>
-                            <a class="button primary" href="<?= $route('study', $decks[0]['id']) ?>">Jetzt wiederholen <span aria-hidden="true">→</span></a>
-                        <?php endif; ?>
-                    </header>
-                    <?php if (!$decks): ?>
-                        <p class="panel muted">Noch keine Stapel.</p>
-                    <?php endif; ?>
-                    <?php if ($decks): ?>
-                        <div class="deck-grid">
-                            <?php foreach ($decks as $deck): ?>
-                                <article class="panel deck">
-                                    <div class="deck-top">
-                                        <span class="deck-icon<?= $deck['vocabulary'] ? ' vocabulary' : '' ?>" aria-hidden="true"><?= $deck['vocabulary'] ? 'Aa' : '▤' ?></span>
-                                        <span class="badge<?= $deck['due'] ? ' due' : '' ?>"><?= $deck['due'] ? $deck['due'] . ' bereit' : 'Nichts fällig' ?></span>
-                                    </div>
-                                    <h3><?= escape($deck['name']) ?></h3>
-                                    <p class="muted small"><?= $deck['total'] ?> <?= $deck['total'] === 1 ? 'Karte' : 'Karten' ?></p>
-                                    <div class="inline-actions">
-                                        <a class="button secondary" href="<?= $route('lesson', $deck['id']) ?>">Vorbereiten</a>
-                                        <a class="button <?= $deck['due'] ? 'primary' : 'secondary' ?>" href="<?= $route('study', $deck['id']) ?>">Wiederholen</a>
-                                    </div>
-                                </article>
-                            <?php endforeach; ?>
-                        </div>
-                    <?php endif; ?>
-                </section>
+            <?php break;
+                case 'learn':
+                case 'review': ?>
+                <?php $review = $view === 'review'; ?>
+                <header class="screen-header"><h1><?= escape($label) ?></h1></header>
+                <?php if (!$data['decks']): ?>
+                    <p class="panel muted"><?= $review ? 'Keine Karten fällig.' : 'Noch keine Stapel.' ?></p>
+                <?php endif; ?>
+                <?php if ($data['decks']): ?>
+                    <div class="deck-grid">
+                        <?php foreach ($data['decks'] as $deck): ?>
+                            <article class="panel deck">
+                                <div class="deck-top">
+                                    <span class="deck-icon<?= $deck['vocabulary'] ? ' vocabulary' : '' ?>" aria-hidden="true"><?= $deck['vocabulary'] ? 'Aa' : '▤' ?></span>
+                                    <?php if ($review): ?><span class="badge"><?= $deck['due'] ?> fällig</span><?php endif; ?>
+                                </div>
+                                <h2><?= escape($deck['name']) ?></h2>
+                                <p class="muted small"><?= $deck['total'] ?> <?= $deck['total'] === 1 ? 'Karte' : 'Karten' ?></p>
+                                <div class="inline-actions">
+                                    <a class="button primary" href="<?= $route($review ? 'study' : 'lesson', $deck['id']) ?>"><?= escape($label) ?></a>
+                                </div>
+                            </article>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
             <?php break;
                 case 'backups': ?>
                 <?php
@@ -213,7 +214,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                 <a class="back-link" href="/">← Zur Übersicht</a>
                 <header class="screen-header"><h1>Stapel erstellen</h1></header>
                 <?php if (!$settings['ai']): ?><p class="notice">Kein KI-Zugang eingerichtet.</p><?php endif; ?>
-                <form method="post" action="<?= $route('create') ?>" enctype="multipart/form-data" class="panel form-grid editor" data-editor>
+                <form method="post" action="<?= $route('create') ?>" enctype="multipart/form-data" class="panel form-grid" data-editor>
                     <?php $hidden(verb: 'generate'); ?>
                     <label>Stapel
                         <select name="deck">
@@ -250,9 +251,9 @@ if ($view === 'create' && !isset($_POST['type'])) {
             <?php break;
                 case 'lesson': ?>
                 <?php $lesson = $data['lesson']; ?>
-                <a class="back-link" href="/">← Meine Stapel</a>
+                <a class="back-link" href="<?= $route('learn') ?>">← Lernen</a>
                 <header class="screen-header">
-                    <div><p class="eyebrow">Vorbereiten</p><h1><?= escape($lesson['name']) ?></h1></div>
+                    <div><p class="eyebrow">Lernen</p><h1><?= escape($lesson['name']) ?></h1></div>
                 </header>
                 <article class="panel lesson">
                     <h2>Lerntext</h2>
@@ -299,14 +300,14 @@ if ($view === 'create' && !isset($_POST['type'])) {
             <?php break;
                 case 'study': ?>
                 <?php $card = $data['card']; ?>
-                <a class="back-link" href="/">← Meine Stapel</a>
+                <a class="back-link" href="<?= $route('review') ?>">← Wiederholen</a>
                 <header class="screen-header">
                     <div><p class="eyebrow">Wiederholen</p><h1><?= escape($data['name']) ?></h1></div>
-                    <a class="button secondary" href="<?= $route('lesson', $deckId) ?>">Vorbereiten</a>
+                    <a class="button secondary" href="<?= $route('lesson', $deckId) ?>">Lernen</a>
                 </header>
                 <?php if (!$card): ?>
                     <article class="panel empty"><h2>Keine Karten fällig.</h2>
-                        <a class="button primary" href="/">Zur Übersicht</a>
+                        <a class="button primary" href="<?= $route('review') ?>">Zur Wiederholung</a>
                     </article>
                 <?php endif; ?>
                 <?php if ($card): ?>
