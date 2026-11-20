@@ -1,6 +1,6 @@
-let cacheName = "bruno-shell-v8";
+let cacheName = "bruno-shell-v9";
 let shell = [
-  "/assets/app.css?v=8",
+  "/assets/app.css?v=9",
   "/assets/app.js?v=8",
   "/assets/icon.svg?v=4",
   "/assets/offline.html",

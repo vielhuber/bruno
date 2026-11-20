@@ -59,7 +59,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <link rel="icon" type="image/svg+xml" href="/assets/icon.svg?v=4">
     <link rel="apple-touch-icon" href="/assets/icon-192.png?v=4">
     <link rel="manifest" href="/manifest.webmanifest?v=4">
-    <link rel="stylesheet" href="/assets/app.css?v=8">
+    <link rel="stylesheet" href="/assets/app.css?v=9">
     <script defer src="/assets/app.js?v=8"></script>
 </head>
 <body class="<?= $account === null ? 'guest' : 'signed-in' ?>">
@@ -108,17 +108,15 @@ if ($view === 'create' && !isset($_POST['type'])) {
                     <span class="avatar" aria-hidden="true"><?= escape(mb_strtoupper(mb_substr($account['email'], start: 0, length: 1))) ?></span>
                     <span class="small account-email"><?= escape($account['email']) ?></span>
                 </div>
-                <div class="sidebar-actions">
-                    <a class="quiet" href="<?= $route('backups') ?>" <?= $view === 'backups' ? 'aria-current="page"' : '' ?>>Backups</a>
-                    <a class="quiet" href="<?= $route('sync') ?>" <?= $view === 'sync' ? 'aria-current="page"' : '' ?>>Anki-Sync</a>
-                </div>
-                <div class="sidebar-actions">
-                    <button class="quiet" type="button" aria-expanded="false" aria-controls="install-help" data-install>App installieren</button>
+                <nav class="sidebar-actions" aria-label="Weitere Funktionen">
+                    <a href="<?= $route('backups') ?>" <?= $view === 'backups' ? 'aria-current="page"' : '' ?>>Backups</a>
+                    <a href="<?= $route('sync') ?>" <?= $view === 'sync' ? 'aria-current="page"' : '' ?>>Anki-Sync</a>
+                    <button type="button" aria-expanded="false" aria-controls="install-help" data-install>App installieren</button>
                     <form method="post" action="/">
                         <?php $hidden(verb: 'logout'); ?>
-                        <button type="submit" class="quiet">Abmelden</button>
+                        <button type="submit">Abmelden</button>
                     </form>
-                </div>
+                </nav>
                 <p id="install-help" class="small muted" hidden>Browsermenü: „App installieren“. iOS: „Zum Home-Bildschirm“.</p>
             </div>
         </aside>
