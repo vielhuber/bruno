@@ -58,7 +58,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <link rel="icon" type="image/svg+xml" href="/assets/icon.svg?v=4">
     <link rel="apple-touch-icon" href="/assets/icon-192.png?v=4">
     <link rel="manifest" href="/manifest.webmanifest?v=4">
-    <link rel="stylesheet" href="/assets/app.css?v=6">
+    <link rel="stylesheet" href="/assets/app.css?v=6.1">
     <script defer src="/assets/app.js"></script>
 </head>
 <body class="<?= $account === null ? 'guest' : 'signed-in' ?>">
@@ -101,16 +101,13 @@ if ($view === 'create' && !isset($_POST['type'])) {
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 5v5h-5M4 19v-5h5m11-4a8 8 0 0 0-14-4m-2 8a8 8 0 0 0 14 4"/></svg>
                     Wiederholen
                 </a>
-                <a href="<?= $route('backups') ?>" <?= $view === 'backups' ? 'aria-current="page"' : '' ?>>
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="6" rx="1.5"/><rect x="3" y="14" width="18" height="6" rx="1.5"/><path d="M7 7h1m-1 10h1"/></svg>
-                    Backups
-                </a>
             </nav>
             <div class="sidebar-foot">
                 <div class="account">
                     <span class="avatar" aria-hidden="true"><?= escape(mb_strtoupper(mb_substr($account['email'], start: 0, length: 1))) ?></span>
                     <span class="small account-email"><?= escape($account['email']) ?></span>
                 </div>
+                <a class="quiet" href="<?= $route('backups') ?>" <?= $view === 'backups' ? 'aria-current="page"' : '' ?>>Backups</a>
                 <div class="sidebar-actions">
                     <button class="quiet" type="button" aria-expanded="false" aria-controls="install-help" data-install>App installieren</button>
                     <form method="post" action="/">
@@ -230,7 +227,6 @@ if ($view === 'create' && !isset($_POST['type'])) {
                 <?php endif; ?>
             <?php break;
                 case 'create': ?>
-                <a class="back-link" href="/">← Zur Übersicht</a>
                 <header class="screen-header"><h1>Stapel erstellen</h1></header>
                 <?php if (!$settings['ai']): ?><p class="notice">Kein KI-Zugang eingerichtet.</p><?php endif; ?>
                 <form method="post" action="<?= $route('create') ?>" enctype="multipart/form-data" class="panel form-grid" data-editor>
@@ -397,7 +393,6 @@ if ($view === 'create' && !isset($_POST['type'])) {
                 <?php endif; ?>
             <?php break;
                 default: ?>
-                <a class="back-link" href="/">← Zur Übersicht</a>
                 <h1>Fehler</h1>
             <?php endswitch; ?>
         </main>
