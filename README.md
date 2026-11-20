@@ -4,9 +4,10 @@ Installierbare Lern-App mit Anki als Datenspeicher und Lernplan.
 
 ## Installation
 
-PHP ≥ 8.3 (cURL, Fileinfo, Mbstring, PDO SQLite, `proc_open`), Python ≥ 3.10 mit passendem [Anki-Wheel](https://pypi.org/project/anki/) und HTTPS. Den DocumentRoot auf `public/` setzen. Kein Composer, kein Frontend-Build.
+PHP ≥ 8.3 (cURL, Fileinfo, Mbstring, PDO SQLite, `proc_open`), Composer, Python ≥ 3.10 mit passendem [Anki-Wheel](https://pypi.org/project/anki/) und HTTPS. Den DocumentRoot auf `public/` setzen. Kein Frontend-Build.
 
 ```sh
+composer install --no-dev
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 cp config.example.php config.local.php
@@ -18,7 +19,9 @@ unset password
 
 Fehlt auf dem Shared Host `ensurepip`, die beiden Python-Schritte durch `python3 -m venv --without-pip .venv` und `python3 -m pip --python .venv/bin/python install -r requirements.txt` ersetzen.
 
-`config.local.php`: privates Datenverzeichnis und KI-Schlüssel für `ai.rebuhleiv.xyz` (Karten, Bewertungen, Bild-Eselsbrücken) setzen. Der fal.ai-Schlüssel ist nur für Audio und Video nötig. Web und Cron müssen als derselbe Benutzer laufen. Vorlagen dürfen höchstens 8 MB groß sein; bei großen Büchern einzelne Kapitel hochladen. Schülerunterlagen vor der KI-Verarbeitung anonymisieren.
+`config.local.php`: privates Datenverzeichnis und KI-Schlüssel für `ai.rebuhleiv.xyz` (Karten und Bewertungen über aihelper, Bild-Eselsbrücken) setzen. Der fal.ai-Schlüssel ist nur für Audio und Video nötig. Web und Cron müssen als derselbe Benutzer laufen.
+
+Beim Erstellen liest die KI bis zu zehn Vorlagen mit insgesamt höchstens 8 MB. Schülerunterlagen vor dem Upload anonymisieren. Man prüft und gibt die Kartenvorschläge frei, bevor man sie im letzten Schritt in Anki speichert.
 
 Alle angemeldeten Konten können unter „Benutzer“ Konten verwalten und Passwörter zurücksetzen. Das eigene Profil ist über die E-Mail-Adresse im Menü erreichbar. Beim Löschen bleiben Anki-Stapel erhalten. Das letzte Konto lässt sich nicht löschen.
 

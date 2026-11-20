@@ -30,6 +30,7 @@ $hidden = static function (string $verb, array $fields = []) use ($csrf): void {
 $label = match ($view) {
     'login' => 'Anmelden',
     'create' => 'Stapel erstellen',
+    'preview' => 'Kartenvorschau',
     'review', 'study' => 'Wiederholen',
     'learn', 'lesson' => 'Lernen',
     'backups' => 'Backups',
@@ -62,7 +63,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <link rel="apple-touch-icon" href="/assets/icon-192.png?v=4">
     <link rel="manifest" href="/manifest.webmanifest?v=4">
     <link rel="stylesheet" href="/assets/app.css?v=10">
-    <script defer src="/assets/app.js?v=8"></script>
+    <script defer src="/assets/app.js?v=11"></script>
 </head>
 <body class="<?= $account === null ? 'guest' : 'signed-in' ?>">
 <?php if ($account === null): ?>
@@ -92,7 +93,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                     <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg>
                     Übersicht
                 </a>
-                <a href="<?= $route('create') ?>" <?= $view === 'create' ? 'aria-current="page"' : '' ?>>
+                <a href="<?= $route('create') ?>" <?= in_array($view, ['create', 'preview'], strict: true) ? 'aria-current="page"' : '' ?>>
                     <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8.5 12h7m-3.5-3.5v7"/></svg>
                     Erstellen
                 </a>
@@ -335,7 +336,12 @@ if ($view === 'create' && !isset($_POST['type'])) {
                 </div>
             <?php break;
                 case 'create': ?>
-                <header class="screen-header"><h1>Stapel erstellen</h1></header>
+                <header class="screen-header">
+                    <div><p class="eyebrow">Schritt 1 von 3</p><h1>Stapel erstellen</h1></div>
+                    <?php if (isset($_SESSION['deckDraft'])): ?>
+                        <a class="button secondary" href="<?= $route('preview') ?>">Offener Entwurf</a>
+                    <?php endif; ?>
+                </header>
                 <?php if (!$settings['ai']): ?><p class="notice">Kein KI-Zugang eingerichtet.</p><?php endif; ?>
                 <form method="post" action="<?= $route('create') ?>" enctype="multipart/form-data" class="panel form-grid" data-editor>
                     <?php $hidden(verb: 'generate'); ?>
@@ -360,11 +366,58 @@ if ($view === 'create' && !isset($_POST['type'])) {
                     <label>Thema oder Schwerpunkt
                         <textarea name="focus" rows="3" maxlength="2000" placeholder="Englisch · Reisen · A1"><?= escape(input($_POST, key: 'focus')) ?></textarea>
                     </label>
-                    <label>Schulbuchauszug oder anonymisierter Test <span class="muted small">PDF, PNG, JPG, TXT · max. 8 MB</span>
-                        <input type="file" name="document" accept="application/pdf,image/jpeg,image/png,text/plain">
+                    <label>Schulbuchauszug oder anonymisierter Test <span class="muted small">PDF, PNG, JPG, TXT · bis zu 10 Dateien, zusammen max. 8 MB</span>
+                        <input type="file" name="document[]" accept="application/pdf,image/jpeg,image/png,text/plain" multiple>
                     </label>
-                    <button type="submit" class="button primary" <?= $settings['ai'] ? '' : 'disabled' ?>>Karten erstellen</button>
+                    <button type="submit" class="button primary" <?= $settings['ai'] ? '' : 'disabled' ?>>Kartenvorschau erstellen</button>
                 </form>
+            <?php break;
+                case 'preview': ?>
+                <?php
+                $draft = $data['draft'];
+                    $proposal = $draft['payload'];
+                    $approved = $draft['approved'];
+                    $saveLabel = $proposal['deck'] ? 'Karten hinzufügen' : 'Stapel anlegen';
+                    ?>
+                <header class="screen-header">
+                    <div>
+                        <p class="eyebrow">Schritt <?= $approved ? 3 : 2 ?> von 3</p>
+                        <h1><?= $approved ? $saveLabel : 'Karten prüfen' ?></h1>
+                        <p class="muted"><?= escape($proposal['title']) ?> · <?= count($proposal['cards']) ?> Kartenvorschläge</p>
+                    </div>
+                </header>
+                <?php if (!$approved): ?>
+                    <div class="deck-grid">
+                        <section class="panel form-grid">
+                            <h2>Lerntext</h2>
+                            <p class="preline"><?= escape($proposal['lesson']) ?></p>
+                        </section>
+                        <?php foreach ($proposal['cards'] as $index => $card): ?>
+                            <article class="panel form-grid">
+                                <h2>Karte <?= $index + 1 ?></h2>
+                                <div><h3>Vorderseite</h3><p class="preline"><?= escape($card['front']) ?></p></div>
+                                <div><h3>Rückseite</h3><p class="preline"><?= escape($card['back']) ?></p></div>
+                                <?php if ($proposal['vocabulary']): ?>
+                                    <div><h3>Eselsbrücke</h3><p class="preline"><?= escape($card['hint']) ?></p></div>
+                                    <div><h3>Bildidee</h3><p class="preline"><?= escape($card['imagePrompt']) ?></p></div>
+                                <?php endif; ?>
+                            </article>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+                <?php if ($approved): ?>
+                    <p class="panel">Die Karten sind freigegeben, aber noch nicht in Anki gespeichert.</p>
+                <?php endif; ?>
+                <div class="inline-actions page-actions">
+                    <form method="post" action="<?= $route('preview') ?>">
+                        <?php $hidden(verb: $approved ? 'save-draft' : 'approve-draft', fields: ['draft' => $draft['id']]); ?>
+                        <button type="submit" class="button primary"><?= $approved ? $saveLabel : 'Karten freigeben' ?></button>
+                    </form>
+                    <form method="post" action="<?= $route('preview') ?>">
+                        <?php $hidden(verb: 'discard-draft', fields: ['draft' => $draft['id']]); ?>
+                        <button type="submit" class="button secondary">Entwurf verwerfen</button>
+                    </form>
+                </div>
             <?php break;
                 case 'lesson': ?>
                 <?php $lesson = $data['lesson']; ?>
@@ -403,8 +456,8 @@ if ($view === 'create' && !isset($_POST['type'])) {
                     <?php if ($lesson['sources']): ?>
                         <section class="lesson-media"><h3>Lernvorlagen</h3>
                             <ul>
-                            <?php foreach ($lesson['sources'] as $source): ?>
-                                <li><a href="<?= $mediaUrl($deckId, $source['file']) ?>"><?= escape($source['type']) ?> herunterladen</a></li>
+                                <?php foreach ($lesson['sources'] as $index => $source): ?>
+                                <li><a href="<?= $mediaUrl($deckId, $source['file']) ?>"><?= escape($source['type']) ?><?= count($lesson['sources']) > 1 ? ' ' . ($index + 1) : '' ?> herunterladen</a></li>
                             <?php endforeach; ?>
                             </ul>
                         </section>

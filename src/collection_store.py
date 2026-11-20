@@ -254,6 +254,8 @@ def generate(col, owner, request):
     deck = owned_deck(col, deck_id, owner) if deck_id else None
     if not deck and col.decks.by_name(title):
         raise Rejected('Der Name ist in Anki bereits belegt. Bitte einen anderen Titel wählen.', 409)
+    if deck and (deck['name'] != title or lesson(col, deck)['text'] != request['previousLesson']):
+        raise Rejected('Der Stapel wurde seit der Vorschau geändert. Bitte einen neuen Entwurf erstellen.', 409)
     meta = metadata(deck) if deck else {'owner': owner}
     if meta.get('vocabulary', request['vocabulary']) != request['vocabulary']:
         raise Rejected('Der Kartentyp muss zum bestehenden Stapel passen.', 422)
@@ -288,10 +290,9 @@ def generate(col, owner, request):
             meta.pop(field, None)
         meta['lesson'] = request['lesson']
 
-    document = request.get('document')
-    document_bytes = base64.b64decode(document['data'], validate=True) if document else None
+    documents = [(document, base64.b64decode(document['data'], validate=True)) for document in request['documents']]
     undo = col.add_custom_undo_entry('bruno: Stapel pflegen')
-    new_file = None
+    new_files = []
     try:
         if not basic:
             basic = basic_models[0] if basic_models else get_stock_notetypes(col)[0][1](col)
@@ -317,17 +318,17 @@ def generate(col, owner, request):
 
         meta['vocabulary'] = request['vocabulary']
         meta['focus'] = request.get('focus', '')
-        if document:
+        for document, document_bytes in documents:
             file = save_media(col, deck_id, document['extension'], document_bytes)
             if not any(source['file'] == file for source in meta.get('sources', [])):
-                new_file = file
+                new_files.append(file)
                 meta.setdefault('sources', []).append({'type': document['type'], 'file': file})
         save_deck(col, deck, meta)
     except Exception:
         col.merge_undo_entries(undo)
         col.undo()
-        if new_file:
-            col.media.trash_files([new_file])
+        if new_files:
+            col.media.trash_files(new_files)
         raise
     col.merge_undo_entries(undo)
     return {'id': deck_id, 'added': len(items)}

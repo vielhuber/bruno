@@ -219,11 +219,11 @@ class Editor {
     let $deck = this.$form.elements.namedItem("deck");
     let $title = this.$form.elements.namedItem("title");
     let $type = this.$form.elements.namedItem("type");
-    let $document = this.$form.elements.namedItem("document");
+    let $documents = this.$form.elements.namedItem("document[]");
     let refresh = () => {
       $title.disabled = $deck.value !== "0";
       $title.required = !$title.disabled;
-      $document.required = $type.value === "test";
+      $documents.required = $type.value === "test";
     };
     $deck.addEventListener("change", () => {
       let vocabulary = $deck.selectedOptions[0]?.dataset.vocabulary === "yes";
@@ -236,7 +236,7 @@ class Editor {
     this.$form.addEventListener("submit", () => {
       let $button = this.$form.querySelector('button[type="submit"]');
       $button.disabled = true;
-      $button.textContent = "Karten werden erstellt …";
+      $button.textContent = "Vorschau wird erstellt …";
     });
   }
 }

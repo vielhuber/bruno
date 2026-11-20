@@ -6,12 +6,15 @@ namespace Bruno;
 
 use finfo;
 
+require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/AppException.php';
 require_once __DIR__ . '/AnkiBridge.php';
 require_once __DIR__ . '/AnkiSync.php';
 require_once __DIR__ . '/BackupHistory.php';
 require_once __DIR__ . '/Account.php';
 require_once __DIR__ . '/Credentials.php';
+require_once __DIR__ . '/Upload.php';
+require_once __DIR__ . '/GatewayGemini.php';
 require_once __DIR__ . '/Gateway.php';
 
 umask(0o077);
@@ -46,33 +49,44 @@ function escape(string $value): string
 }
 
 /**
- * Return validated upload data; never use the supplied filename.
+ * Validate the complete upload set before it can be sent to the AI.
  *
- * @return array{mime: string, extension: string, data: string}|null
+ * @param array<string, string> $types
+ * @return list<Upload>
  */
-function upload(string $field, array $types, int $limit): ?array
+function uploads(string $field, array $types, int $limit, int $maxFiles = 1): array
 {
     $file = $_FILES[$field] ?? [];
-    if (($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
-        return null;
+    $errors = (array) ($file['error'] ?? []);
+    if (count($errors) > $maxFiles) {
+        throw new AppException('Zu viele Dateien. Erlaubt sind höchstens ' . $maxFiles . '.', 422);
     }
-    if ($file['error'] !== UPLOAD_ERR_OK || $file['size'] > $limit || $file['size'] < 1) {
-        throw new AppException('Die Datei konnte nicht gelesen werden oder ist zu groß.', 422);
-    }
-    if (!is_uploaded_file($file['tmp_name'])) {
-        throw new AppException('Ungültiger Upload.', 422);
-    }
-    $mime = (new finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']);
-    if (in_array($mime, ['audio/x-wav', 'audio/vnd.wave', 'audio/wave'], strict: true)) {
-        $mime = 'audio/wav';
-    }
-    if (!isset($types[$mime])) {
-        throw new AppException('Dieses Dateiformat wird nicht unterstützt.', 422);
-    }
-    $data = file_get_contents($file['tmp_name']);
-    if ($data === false) {
-        throw new AppException('Die Datei konnte nicht gelesen werden.', 422);
+    $paths = (array) ($file['tmp_name'] ?? []);
+    $sizes = (array) ($file['size'] ?? []);
+    $detector = new finfo(FILEINFO_MIME_TYPE);
+    $validated = [];
+    foreach ($errors as $index => $error) {
+        if ($error === UPLOAD_ERR_NO_FILE) {
+            continue;
+        }
+        $size = $sizes[$index] ?? 0;
+        if ($error !== UPLOAD_ERR_OK || !is_int($size) || $size < 1 || $size > $limit) {
+            throw new AppException('Eine Datei konnte nicht gelesen werden oder die zulässige Gesamtgröße wurde überschritten.', 422);
+        }
+        $limit -= $size;
+        $path = $paths[$index] ?? '';
+        if (!is_string($path) || !is_uploaded_file($path)) {
+            throw new AppException('Ungültiger Upload.', 422);
+        }
+        $mime = $detector->file($path);
+        if (in_array($mime, ['audio/x-wav', 'audio/vnd.wave', 'audio/wave'], strict: true)) {
+            $mime = 'audio/wav';
+        }
+        if ($mime === false || !isset($types[$mime])) {
+            throw new AppException('Dieses Dateiformat wird nicht unterstützt.', 422);
+        }
+        $validated[] = new Upload($path, $mime, $types[$mime]);
     }
 
-    return ['mime' => $mime, 'extension' => $types[$mime], 'data' => base64_encode($data)];
+    return $validated;
 }

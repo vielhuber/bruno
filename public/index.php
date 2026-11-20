@@ -56,13 +56,13 @@ try {
         $account = $credentials->resume($sessionAccount['id'], $sessionAccount['passwordVersion']);
     }
     if ($sessionAccount !== null && !$account instanceof Account) {
-        unset($_SESSION['account'], $_SESSION['reviewSecret']);
+        unset($_SESSION['account'], $_SESSION['reviewSecret'], $_SESSION['deckDraft']);
         session_regenerate_id(delete_old_session: true);
     }
     $request = ['owner' => $account->id ?? '', 'deck' => $deckId];
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($_POST === [] && (int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > 8 * 1024 * 1024) {
-            throw new AppException('Die Datei ist zu groß. Bitte höchstens 8 MB hochladen.', 413);
+            throw new AppException('Die Anfrage ist zu groß. Vorlagen dürfen zusammen höchstens 8 MB groß sein.', 413);
         }
         if (!hash_equals($csrf, input($_POST, key: 'csrf'))) {
             throw new AppException('Die Sitzung ist abgelaufen. Bitte die Seite neu laden.', 403);
@@ -176,24 +176,54 @@ try {
             if (array_intersect($owned['jobs'] ?? [], ['queued', 'submitting', 'working'])) {
                 throw new AppException('Bitte warten, bis die Medien des Stapels fertig sind.', 409);
             }
-            $document = upload('document', [
+            $documents = uploads('document', [
                 'application/pdf' => 'pdf',
                 'image/jpeg' => 'jpg',
                 'image/png' => 'png',
                 'text/plain' => 'txt',
-            ], 8 * 1024 * 1024);
-            if ($type === 'test' && $document === null) {
+            ], 8 * 1024 * 1024, maxFiles: 10);
+            if ($type === 'test' && !$documents) {
                 throw new AppException('Bitte einen anonymisierten Test hochladen.', 422);
             }
-            $content = $gateway->create($title, $focus, $type, $document, $owned['text'] ?? '');
-            $result = $anki->call('generate', $request + $content + [
+            $previousLesson = $owned['text'] ?? '';
+            $content = $gateway->create($title, $focus, $type, $documents, $previousLesson);
+            $sources = [];
+            foreach ($documents as $document) {
+                $sources[] = [
+                    'extension' => $document->extension,
+                    'data' => base64_encode($document->contents()),
+                    'type' => $type === 'test' ? 'Test' : 'Lernvorlage',
+                ];
+            }
+            $_SESSION['deckDraft'] = ['id' => bin2hex(random_bytes(16)), 'approved' => false, 'payload' => $content + [
+                'deck' => $deckId,
                 'title' => $title,
                 'focus' => $focus,
                 'vocabulary' => $type === 'vocabulary',
-                'document' => $document === null ? null : $document + [
-                    'type' => $type === 'test' ? 'Test' : 'Lernvorlage',
-                ],
-            ]);
+                'previousLesson' => $previousLesson,
+                'documents' => $sources,
+            ]];
+            go('preview');
+        }
+
+        if (in_array($verb, ['approve-draft', 'save-draft', 'discard-draft'], strict: true)) {
+            $draft = $_SESSION['deckDraft'] ?? null;
+            if ($draft === null || !hash_equals($draft['id'], input($_POST, key: 'draft', maximum: 32))) {
+                throw new AppException('Dieser Entwurf ist nicht mehr aktuell. Bitte die aktuelle Vorschau öffnen.', 409);
+            }
+            if ($verb === 'discard-draft') {
+                unset($_SESSION['deckDraft']);
+                go('create', $draft['payload']['deck']);
+            }
+            if ($verb === 'approve-draft') {
+                $_SESSION['deckDraft']['approved'] = true;
+                go('preview');
+            }
+            if (!$draft['approved']) {
+                throw new AppException('Bitte die Karten erst prüfen und freigeben.', 409);
+            }
+            $result = $anki->call('generate', $draft['payload'] + ['owner' => $account->id]);
+            unset($_SESSION['deckDraft']);
             $_SESSION['flash'] = $result['added'] . ' neue Karte(n) gespeichert. Bestehende Wiederholungen bleiben erhalten.';
             go('lesson', $result['id']);
         }
@@ -244,7 +274,7 @@ try {
                 throw new AppException('Bei dieser Karte kannst du deine Antwort nur selbst bewerten.', 422);
             }
             $answer = input($_POST, key: 'answer', maximum: 1500);
-            $voice = upload('voice', ['audio/wav' => 'wav'], limit: 900_000);
+            $voice = uploads('voice', ['audio/wav' => 'wav'], limit: 900_000)[0] ?? null;
             if ($answer === '' && $voice === null) {
                 throw new AppException('Bitte eine Antwort schreiben oder aufnehmen.', 422);
             }
@@ -310,9 +340,13 @@ try {
         exit;
     }
 
+    if ($view === 'preview' && !isset($_SESSION['deckDraft'])) {
+        go('create');
+    }
     $data = match ($view) {
         'login', 'profile' => [],
         'users' => ['users' => $credentials->accounts()],
+        'preview' => ['draft' => $_SESSION['deckDraft']],
         'home', 'create', 'learn', 'review' => ['decks' => $anki->call('list', $request)],
         'lesson' => ['lesson' => $anki->call('lesson', $request)],
         'study' => $anki->call('study', $request),
@@ -333,7 +367,7 @@ try {
         echo $errorMessage;
         exit;
     }
-    if ($account instanceof Account && $verb === 'generate') {
+    if ($account instanceof Account && ($verb === 'generate' || ($view === 'create' && $_POST === []))) {
         $view = 'create';
         try {
             $data['decks'] = $anki->call('list', $request);
@@ -351,7 +385,10 @@ try {
     if ($view === 'users' && $account instanceof Account && $error instanceof AppException) {
         $data['users'] = $credentials->accounts();
     }
-    if (!$account instanceof Account || ($verb !== 'generate' && $view !== 'profile' && !isset($data['sync']) && !isset($data['users']))) {
+    if ($view === 'preview' && $account instanceof Account && isset($_SESSION['deckDraft'])) {
+        $data['draft'] = $_SESSION['deckDraft'];
+    }
+    if (!$account instanceof Account || ($view !== 'profile' && !$data)) {
         $view = $account instanceof Account ? 'error' : 'login';
     }
 }
