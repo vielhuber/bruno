@@ -80,6 +80,12 @@ try {
             go();
         }
 
+        if ($verb === 'backup') {
+            $anki->call('backup', ['manual' => true]);
+            $_SESSION['flash'] = 'Backup erstellt.';
+            go('backups');
+        }
+
         if ($verb === 'generate') {
             $owned = $deckId ? $anki->call('lesson', $request) : null;
             $title = $owned['name'] ?? input($_POST, key: 'title', maximum: 100);

@@ -16,13 +16,15 @@ from collection_store import (
 from media_jobs import run_jobs
 
 
-def backup(col, directory):
+def backup(col, directory, manual=False):
     target = directory / 'backups'
     target.mkdir(mode=0o700, exist_ok=True)
-    day = datetime.now(ZoneInfo('Europe/Berlin')).date().isoformat()
-    filename = target / f'{day}.colpkg'
+    now = datetime.now(ZoneInfo('Europe/Berlin'))
+    day = now.date().isoformat()
+    stamp = f'{day}-{now:%H%M%S-%f}-manual' if manual else day
+    filename = target / f'{stamp}.colpkg'
     if not filename.exists():
-        temporary = target / f'.{day}.partial'
+        temporary = target / f'.{stamp}.partial'
         try:
             col.export_collection_package(str(temporary), include_media=True, legacy=False)
             temporary.replace(filename)
@@ -75,7 +77,7 @@ def dispatch(directory, request):
         return run_jobs(directory, request['key'])
     with collection(directory) as col:
         if action == 'backup':
-            return backup(col, directory)
+            return backup(col, directory, manual=request.get('manual', False))
         if action == 'sync':
             return sync(col, directory, request)
         owner = request['owner']

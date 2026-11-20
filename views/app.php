@@ -176,6 +176,10 @@ if ($view === 'create' && !isset($_POST['type'])) {
                     ?>
                 <header class="screen-header">
                     <div><h1>Backups</h1><p class="muted">Anki-Sammlung und Medien</p></div>
+                    <form method="post" action="<?= $route('backups') ?>">
+                        <?php $hidden(verb: 'backup'); ?>
+                        <button class="button primary" type="submit">Backup erstellen</button>
+                    </form>
                 </header>
                 <dl class="stats backup-stats" aria-label="Backup-Status">
                     <div class="stat-accent"><dt>Anzahl</dt><dd><?= count($backups) ?></dd></div>
