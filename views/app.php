@@ -55,17 +55,17 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <meta name="theme-color" content="#101117">
     <meta name="apple-mobile-web-app-title" content="bruno">
     <title>bruno · <?= escape($label) ?></title>
-    <link rel="icon" type="image/svg+xml" href="/assets/icon.svg">
-    <link rel="apple-touch-icon" href="/assets/icon-192.png">
-    <link rel="manifest" href="/manifest.webmanifest">
-    <link rel="stylesheet" href="/assets/app.css?v=3">
+    <link rel="icon" type="image/svg+xml" href="/assets/icon.svg?v=4">
+    <link rel="apple-touch-icon" href="/assets/icon-192.png?v=4">
+    <link rel="manifest" href="/manifest.webmanifest?v=4">
+    <link rel="stylesheet" href="/assets/app.css?v=4">
     <script defer src="/assets/app.js"></script>
 </head>
 <body class="<?= $account === null ? 'guest' : 'signed-in' ?>">
 <?php if ($account === null): ?>
     <main class="guest-main" id="main">
         <article class="panel login-panel">
-            <a class="brand" href="/"><span class="brand-icon" aria-hidden="true">🎓</span> bruno</a>
+            <a class="brand" href="/"><img class="brand-icon" src="/assets/icon.svg?v=4" width="41" height="41" alt=""> bruno</a>
             <h1>Anmelden</h1>
             <?php if ($errorMessage !== ''): ?>
                 <p class="notice error" role="alert"><?= escape($errorMessage) ?></p>
@@ -83,7 +83,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <a class="skip" href="#main">Zum Inhalt</a>
     <div class="app-shell">
         <aside class="sidebar">
-            <a class="brand" href="/"><span class="brand-icon" aria-hidden="true">🎓</span> bruno</a>
+            <a class="brand" href="/"><img class="brand-icon" src="/assets/icon.svg?v=4" width="41" height="41" alt=""> bruno</a>
             <nav aria-label="Hauptnavigation">
                 <a href="/" <?= $view === 'home' ? 'aria-current="page"' : '' ?>>
                     <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg>

@@ -1,7 +1,40 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-    <rect width="512" height="512" fill="#6746ed"/>
-    <path d="M166 251v69c0 17 40 44 90 44s90-27 90-44v-69l-90 42z" fill="#e3d8ff"/>
-    <path d="m118 229 125-66a28 28 0 0 1 26 0l125 66a12 12 0 0 1 0 21l-125 66a28 28 0 0 1-26 0l-125-66a12 12 0 0 1 0-21z" fill="#fff"/>
-    <path d="m267 236 98 40v49" fill="none" stroke="#ffc347" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
-    <circle cx="366" cy="332" r="13" fill="#ffc347"/>
+    <defs>
+        <linearGradient id="tile" x2="100%" y2="100%">
+            <stop offset="0" stop-color="#926eff"/>
+            <stop offset="1" stop-color="#4f36ac"/>
+        </linearGradient>
+        <linearGradient id="fur" x2="0" y2="100%">
+            <stop offset="0" stop-color="#f8c88d"/>
+            <stop offset="1" stop-color="#cb8b67"/>
+        </linearGradient>
+    </defs>
+    <rect width="512" height="512" fill="url(#tile)"/>
+    <circle cx="256" cy="262" r="180" fill="#301966" opacity=".2"/>
+    <g fill="#d09576" stroke="#31203d" stroke-width="14">
+        <circle cx="161" cy="168" r="51"/>
+        <circle cx="351" cy="168" r="51"/>
+    </g>
+    <g fill="#a56267">
+        <circle cx="161" cy="168" r="24"/>
+        <circle cx="351" cy="168" r="24"/>
+    </g>
+    <path d="M256 133c-83 0-142 55-142 133 0 77 62 120 142 120s142-43 142-120c0-78-59-133-142-133Z" fill="url(#fur)" stroke="#31203d" stroke-width="14"/>
+    <ellipse cx="256" cy="310" rx="63" ry="47" fill="#ffe6b9"/>
+    <path d="M225 175c7-8 15-12 23-11m8 15c8-8 16-10 23-9" fill="none" stroke="#a06752" stroke-width="8" stroke-linecap="round"/>
+    <path d="M112 224h18m252 0h18m-158 12c8-10 20-10 28 0" fill="none" stroke="#31203d" stroke-width="14" stroke-linecap="round"/>
+    <g fill="#ded8ff" stroke="#31203d" stroke-width="13">
+        <rect x="129" y="201" width="114" height="77" rx="25"/>
+        <rect x="269" y="201" width="114" height="77" rx="25"/>
+    </g>
+    <g fill="#31203d">
+        <circle cx="190" cy="241" r="16"/>
+        <circle cx="322" cy="241" r="16"/>
+        <path d="M236 293c0-11 40-11 40 0 0 9-13 19-20 19s-20-10-20-19Z"/>
+    </g>
+    <g fill="#fff">
+        <circle cx="195" cy="236" r="5"/>
+        <circle cx="327" cy="236" r="5"/>
+    </g>
+    <path d="M256 310v13m0 0c-8 10-22 12-32 3m32-3c8 10 22 12 32 3" fill="none" stroke="#31203d" stroke-width="7" stroke-linecap="round"/>
 </svg>

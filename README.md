@@ -1,4 +1,4 @@
-# 🎓 bruno
+# <img src="public/assets/icon.svg" width="28" height="28" alt=""> bruno
 
 Installierbare Lern-App mit Anki als Datenspeicher und Lernplan.
 
