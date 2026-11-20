@@ -34,6 +34,8 @@ $label = match ($view) {
     'learn', 'lesson' => 'Lernen',
     'backups' => 'Backups',
     'sync' => 'Anki-Sync',
+    'users' => 'Benutzer',
+    'profile' => 'Mein Profil',
     default => 'Übersicht',
 };
 $selectedType = input($_POST, key: 'type') ?: 'topic';
@@ -59,7 +61,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <link rel="icon" type="image/svg+xml" href="/assets/icon.svg?v=4">
     <link rel="apple-touch-icon" href="/assets/icon-192.png?v=4">
     <link rel="manifest" href="/manifest.webmanifest?v=4">
-    <link rel="stylesheet" href="/assets/app.css?v=9">
+    <link rel="stylesheet" href="/assets/app.css?v=10">
     <script defer src="/assets/app.js?v=8"></script>
 </head>
 <body class="<?= $account === null ? 'guest' : 'signed-in' ?>">
@@ -104,11 +106,12 @@ if ($view === 'create' && !isset($_POST['type'])) {
                 </a>
             </nav>
             <div class="sidebar-foot">
-                <div class="account">
-                    <span class="avatar" aria-hidden="true"><?= escape(mb_strtoupper(mb_substr($account['email'], start: 0, length: 1))) ?></span>
-                    <span class="small account-email"><?= escape($account['email']) ?></span>
-                </div>
+                <a class="account" href="<?= $route('profile') ?>" <?= $view === 'profile' ? 'aria-current="page"' : '' ?>>
+                    <span class="avatar" aria-hidden="true"><?= escape(mb_strtoupper(mb_substr($account->email, start: 0, length: 1))) ?></span>
+                    <span class="small account-email"><?= escape($account->email) ?></span>
+                </a>
                 <nav class="sidebar-actions" aria-label="Weitere Funktionen">
+                    <a class="users-link" href="<?= $route('users') ?>" <?= $view === 'users' ? 'aria-current="page"' : '' ?>>Benutzer</a>
                     <a href="<?= $route('backups') ?>" <?= $view === 'backups' ? 'aria-current="page"' : '' ?>>Backups</a>
                     <a href="<?= $route('sync') ?>" <?= $view === 'sync' ? 'aria-current="page"' : '' ?>>Anki-Sync</a>
                     <button type="button" aria-expanded="false" aria-controls="install-help" data-install>App installieren</button>
@@ -278,6 +281,58 @@ if ($view === 'create' && !isset($_POST['type'])) {
                     <p class="small muted">Gilt für alle Konten. Änderungen in Anki Desktop zuerst dort mit AnkiWeb synchronisieren. Zeiten: Berlin.</p>
                     <button class="button secondary" type="submit" <?= $syncStatus['running'] ? 'disabled' : '' ?>>Intervall speichern</button>
                 </form>
+            <?php break;
+                case 'profile': ?>
+                <header class="screen-header"><h1>Mein Profil</h1></header>
+                <form class="panel form-grid" method="post" action="<?= $route('profile') ?>">
+                    <?php $hidden(verb: 'save-profile'); ?>
+                    <label>E-Mail-Adresse <input type="email" name="email" value="<?= escape($account->email) ?>" autocomplete="username" maxlength="254" required></label>
+                    <label>Aktuelles Passwort <input type="password" name="current_password" autocomplete="current-password" required></label>
+                    <label>Neues Passwort (optional) <input type="password" name="password" autocomplete="new-password" minlength="12" maxlength="72"></label>
+                    <button class="button primary" type="submit">Profil speichern</button>
+                </form>
+            <?php break;
+                case 'users': ?>
+                <?php $canDeleteUser = count($data['users']) > 1; ?>
+                <header class="screen-header"><h1>Benutzer</h1></header>
+                <div class="form-grid">
+                    <form class="panel form-grid" method="post" action="<?= $route('users') ?>">
+                        <h2>Benutzer anlegen</h2>
+                        <?php $hidden(verb: 'create-user'); ?>
+                        <label>E-Mail-Adresse <input type="email" name="email" autocomplete="off" maxlength="254" required></label>
+                        <label>Passwort <input type="password" name="password" autocomplete="new-password" minlength="12" maxlength="72" required></label>
+                        <button class="button primary" type="submit">Benutzer anlegen</button>
+                    </form>
+                    <section class="panel form-grid" aria-labelledby="users-list">
+                        <h2 id="users-list">Bestehende Benutzer</h2>
+                        <?php foreach ($data['users'] as $userId => $email): ?>
+                            <details class="user-entry" <?= $errorMessage !== '' && input($_POST, key: 'user') === $userId ? 'open' : '' ?>>
+                                <summary><?= escape($email) ?></summary>
+                                <?php if ($userId === $account->id): ?>
+                                    <p class="page-actions"><a class="button secondary" href="<?= $route('profile') ?>">Eigenes Profil bearbeiten</a></p>
+                                <?php endif; ?>
+                                <?php if ($userId !== $account->id): ?>
+                                    <form class="form-grid page-actions" method="post" action="<?= $route('users') ?>">
+                                        <?php $hidden(verb: 'update-user', fields: ['user' => $userId]); ?>
+                                        <label>E-Mail-Adresse <input type="email" name="email" value="<?= escape($email) ?>" autocomplete="off" maxlength="254" required></label>
+                                        <label>Neues Passwort (optional) <input type="password" name="password" autocomplete="new-password" minlength="12" maxlength="72"></label>
+                                        <button class="button secondary" type="submit">Benutzer speichern</button>
+                                    </form>
+                                <?php endif; ?>
+                                <?php if ($canDeleteUser): ?>
+                                    <details class="page-actions">
+                                        <summary class="button secondary">Benutzer löschen</summary>
+                                        <form class="inline-actions page-actions" method="post" action="<?= $route('users') ?>">
+                                            <?php $hidden(verb: 'delete-user', fields: ['user' => $userId]); ?>
+                                            <span class="small muted">Anki-Stapel bleiben erhalten.</span>
+                                            <button class="button secondary" type="submit">Endgültig löschen</button>
+                                        </form>
+                                    </details>
+                                <?php endif; ?>
+                            </details>
+                        <?php endforeach; ?>
+                    </section>
+                </div>
             <?php break;
                 case 'create': ?>
                 <header class="screen-header"><h1>Stapel erstellen</h1></header>

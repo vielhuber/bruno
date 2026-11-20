@@ -34,18 +34,84 @@ final class Credentials
      */
     public function setPassword(string $email, #[SensitiveParameter] string $password): void
     {
-        $email = strtolower(trim($email));
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 254) {
-            throw new AppException('Ungültige E-Mail-Adresse.', 422);
-        }
-        if (strlen($password) < 12 || strlen($password) > 72 || str_contains($password, "\0")) {
-            throw new AppException('Das Passwort muss 12 bis 72 Bytes lang sein.', 422);
-        }
-
         $statement = $this->database->prepare(
             'INSERT INTO users (id, email, password) VALUES (?, ?, ?) ON CONFLICT (email) DO UPDATE SET password = excluded.password',
         );
-        $statement->execute([bin2hex(random_bytes(16)), $email, password_hash($password, PASSWORD_DEFAULT)]);
+        $statement->execute([bin2hex(random_bytes(16)), $this->normalizedEmail($email), $this->hashedPassword($password)]);
+    }
+
+    /**
+     * Reject duplicate addresses instead of changing an existing account.
+     */
+    public function createAccount(string $email, #[SensitiveParameter] string $password): void
+    {
+        $statement = $this->database->prepare(
+            'INSERT INTO users (id, email, password) VALUES (?, ?, ?) ON CONFLICT (email) DO NOTHING',
+        );
+        $statement->execute([bin2hex(random_bytes(16)), $this->normalizedEmail($email), $this->hashedPassword($password)]);
+        if ($statement->rowCount() !== 1) {
+            throw new AppException('Diese E-Mail-Adresse wird bereits verwendet.', 409);
+        }
+    }
+
+    /**
+     * Preserve the account ID and keep the password unchanged when none is supplied.
+     */
+    public function updateAccount(string $id, string $email, #[SensitiveParameter] string $password): Account
+    {
+        $email = $this->normalizedEmail($email);
+        $statement = $this->database->prepare(
+            'UPDATE OR IGNORE users SET email = ?, password = COALESCE(?, password) WHERE id = ? RETURNING id, email, password',
+        );
+        $statement->execute([$email, $password === '' ? null : $this->hashedPassword($password), $id]);
+        $user = $statement->fetch(PDO::FETCH_ASSOC);
+        $statement->closeCursor();
+        if (!$user) {
+            if ($this->accountId($email) !== null) {
+                throw new AppException('Diese E-Mail-Adresse wird bereits verwendet.', 409);
+            }
+            throw new AppException('Benutzerkonto nicht gefunden.', 404);
+        }
+
+        return $this->account($user);
+    }
+
+    /**
+     * Leave at least one login available and keep all Anki decks.
+     */
+    public function deleteAccount(string $id): void
+    {
+        $statement = $this->database->prepare('DELETE FROM users WHERE id = ? AND (SELECT COUNT(*) FROM users) > 1');
+        $statement->execute([$id]);
+        if ($statement->rowCount() !== 1) {
+            throw new AppException('Das Konto fehlt oder ist das letzte verbleibende Konto.', 409);
+        }
+    }
+
+    /**
+     * List accounts by email without retrieving password hashes.
+     *
+     * @return array<string, string>
+     */
+    public function accounts(): array
+    {
+        return $this->database->query('SELECT id, email FROM users ORDER BY email')->fetchAll(PDO::FETCH_KEY_PAIR);
+    }
+
+    /**
+     * Reject sessions for deleted accounts or credentials that have since changed.
+     */
+    public function resume(string $id, string $passwordVersion): ?Account
+    {
+        $statement = $this->database->prepare('SELECT id, email, password FROM users WHERE id = ?');
+        $statement->execute([$id]);
+        $user = $statement->fetch(PDO::FETCH_ASSOC);
+        if (!$user) {
+            return null;
+        }
+        $account = $this->account($user);
+
+        return hash_equals($account->passwordVersion, $passwordVersion) ? $account : null;
     }
 
     /**
@@ -62,10 +128,8 @@ final class Credentials
 
     /**
      * Bound login attempts without making unknown accounts distinguishable.
-     *
-     * @return array{id: string, email: string}|null
      */
-    public function authenticate(string $email, #[SensitiveParameter] string $password, string $client): ?array
+    public function authenticate(string $email, #[SensitiveParameter] string $password, string $client): ?Account
     {
         $slot = intdiv(time(), num2: 900);
         $this->database->prepare('DELETE FROM attempts WHERE slot < ?')->execute([$slot]);
@@ -90,6 +154,45 @@ final class Credentials
             return null;
         }
 
-        return ['id' => $user['id'], 'email' => $user['email']];
+        return $this->account($user);
+    }
+
+    /**
+     * Issue a password version that is safe to keep in server-side session data.
+     *
+     * @param array{id: string, email: string, password: string} $user
+     */
+    private function account(#[SensitiveParameter] array $user): Account
+    {
+        return new Account(
+            id: $user['id'],
+            email: $user['email'],
+            passwordVersion: hash('sha256', $user['password']),
+        );
+    }
+
+    /**
+     * Canonicalize the address before applying the unique constraint.
+     */
+    private function normalizedEmail(string $email): string
+    {
+        $email = strtolower(trim($email));
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 254) {
+            throw new AppException('Ungültige E-Mail-Adresse.', 422);
+        }
+
+        return $email;
+    }
+
+    /**
+     * Reject values that bcrypt would truncate or refuse.
+     */
+    private function hashedPassword(#[SensitiveParameter] string $password): string
+    {
+        if (strlen($password) < 12 || strlen($password) > 72 || str_contains($password, "\0")) {
+            throw new AppException('Das Passwort muss 12 bis 72 Bytes lang sein.', 422);
+        }
+
+        return password_hash($password, PASSWORD_DEFAULT);
     }
 }

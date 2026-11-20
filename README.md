@@ -20,6 +20,8 @@ Fehlt auf dem Shared Host `ensurepip`, die beiden Python-Schritte durch `python3
 
 `config.local.php`: privates Datenverzeichnis und KI-Schlüssel für `ai.rebuhleiv.xyz` (Karten, Bewertungen, Bild-Eselsbrücken) setzen. Der fal.ai-Schlüssel ist nur für Audio und Video nötig. Web und Cron müssen als derselbe Benutzer laufen. Vorlagen dürfen höchstens 8 MB groß sein; bei großen Büchern einzelne Kapitel hochladen. Schülerunterlagen vor der KI-Verarbeitung anonymisieren.
 
+Alle angemeldeten Konten können unter „Benutzer“ Konten verwalten und Passwörter zurücksetzen. Das eigene Profil ist über die E-Mail-Adresse im Menü erreichbar. Beim Löschen bleiben Anki-Stapel erhalten. Das letzte Konto lässt sich nicht löschen.
+
 ## Anki
 
 Eine gemeinsame AnkiWeb-Sammlung, ein bruno-Konto je Stapel. Zum ersten Download mit einer leeren lokalen Sammlung starten:

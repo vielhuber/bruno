@@ -24,7 +24,8 @@ $anki = new AnkiBridge($config['python'], $config['data_dir']);
 $sync = new AnkiSync($anki, $config['data_dir'], $config['sync_endpoint'] ?? '');
 $gateway = new Gateway($config['ai_key'], $config['ai_model']);
 $backupHistory = new BackupHistory($config['data_dir']);
-$account = $_SESSION['account'] ?? null;
+$account = null;
+$credentials = null;
 $csrf = $_SESSION['csrf'];
 $flash = $_SESSION['flash'] ?? '';
 unset($_SESSION['flash']);
@@ -49,7 +50,16 @@ try {
     $verb = input($_POST, key: 'verb');
     $view = input($_GET, key: 'view') ?: 'home';
     $deckId = (int) input($_POST + $_GET, key: 'deck');
-    $request = ['owner' => $account['id'] ?? '', 'deck' => $deckId];
+    $sessionAccount = $_SESSION['account'] ?? null;
+    if (isset($sessionAccount['passwordVersion'])) {
+        $credentials = new Credentials($config['data_dir']);
+        $account = $credentials->resume($sessionAccount['id'], $sessionAccount['passwordVersion']);
+    }
+    if ($sessionAccount !== null && !$account instanceof Account) {
+        unset($_SESSION['account'], $_SESSION['reviewSecret']);
+        session_regenerate_id(delete_old_session: true);
+    }
+    $request = ['owner' => $account->id ?? '', 'deck' => $deckId];
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($_POST === [] && (int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > 8 * 1024 * 1024) {
             throw new AppException('Die Datei ist zu groß. Bitte höchstens 8 MB hochladen.', 413);
@@ -57,22 +67,24 @@ try {
         if (!hash_equals($csrf, input($_POST, key: 'csrf'))) {
             throw new AppException('Die Sitzung ist abgelaufen. Bitte die Seite neu laden.', 403);
         }
+        $password = $_POST['password'] ?? '';
+        $password = is_string($password) ? $password : '';
 
-        if ($verb === 'login' && $account === null) {
-            $credentials = new Credentials($config['data_dir']);
+        if ($verb === 'login' && !$account instanceof Account) {
+            $credentials ??= new Credentials($config['data_dir']);
             $authenticated = $credentials->authenticate(
                 input($_POST, key: 'email', maximum: 254),
-                is_string($_POST['password'] ?? null) ? $_POST['password'] : '',
+                $password,
                 $_SERVER['REMOTE_ADDR'] ?? '',
             );
-            if (!$authenticated) {
+            if (!$authenticated instanceof Account) {
                 throw new AppException('E-Mail-Adresse oder Passwort stimmt nicht.', 401);
             }
             session_regenerate_id(delete_old_session: true);
-            $_SESSION = ['account' => $authenticated, 'reviewSecret' => bin2hex(random_bytes(32))];
+            $_SESSION = ['account' => $authenticated->sessionData(), 'reviewSecret' => bin2hex(random_bytes(32))];
             go();
         }
-        if ($account === null) {
+        if (!$account instanceof Account) {
             throw new AppException('Bitte erneut anmelden.', 401);
         }
 
@@ -80,6 +92,44 @@ try {
             $_SESSION = [];
             session_regenerate_id(delete_old_session: true);
             go();
+        }
+
+        if ($verb === 'save-profile') {
+            $currentPassword = $_POST['current_password'] ?? '';
+            $authenticated = $credentials->authenticate($account->email, is_string($currentPassword) ? $currentPassword : '', $_SERVER['REMOTE_ADDR'] ?? '');
+            if ($authenticated?->id !== $account->id) {
+                throw new AppException('Das aktuelle Passwort stimmt nicht.', 403);
+            }
+            $updated = $credentials->updateAccount($account->id, input($_POST, key: 'email', maximum: 254), $password);
+            session_regenerate_id(delete_old_session: true);
+            $_SESSION['account'] = $updated->sessionData();
+            $_SESSION['flash'] = 'Profil gespeichert.';
+            go('profile');
+        }
+
+        if (in_array($verb, ['create-user', 'update-user', 'delete-user'], strict: true)) {
+            if ($verb === 'create-user') {
+                $credentials->createAccount(input($_POST, key: 'email', maximum: 254), $password);
+                $_SESSION['flash'] = 'Benutzer angelegt.';
+                go('users');
+            }
+            $userId = input($_POST, key: 'user', maximum: 32);
+            if ($verb === 'delete-user') {
+                $credentials->deleteAccount($userId);
+                if ($userId === $account->id) {
+                    $_SESSION = [];
+                    session_regenerate_id(delete_old_session: true);
+                    go();
+                }
+                $_SESSION['flash'] = 'Benutzer gelöscht.';
+                go('users');
+            }
+            if ($userId === $account->id) {
+                go('profile');
+            }
+            $credentials->updateAccount($userId, input($_POST, key: 'email', maximum: 254), $password);
+            $_SESSION['flash'] = 'Benutzer gespeichert.';
+            go('users');
         }
 
         if ($verb === 'backup') {
@@ -207,7 +257,7 @@ try {
         throw new AppException('Unbekannte Anfrage.', 400);
     }
 
-    if ($account === null) {
+    if (!$account instanceof Account) {
         if ($view === 'media') {
             throw new AppException('Bitte anmelden.', 401);
         }
@@ -261,7 +311,8 @@ try {
     }
 
     $data = match ($view) {
-        'login' => [],
+        'login', 'profile' => [],
+        'users' => ['users' => $credentials->accounts()],
         'home', 'create', 'learn', 'review' => ['decks' => $anki->call('list', $request)],
         'lesson' => ['lesson' => $anki->call('lesson', $request)],
         'study' => $anki->call('study', $request),
@@ -282,7 +333,7 @@ try {
         echo $errorMessage;
         exit;
     }
-    if ($account !== null && $verb === 'generate') {
+    if ($account instanceof Account && $verb === 'generate') {
         $view = 'create';
         try {
             $data['decks'] = $anki->call('list', $request);
@@ -290,15 +341,18 @@ try {
             $data['decks'] = [];
         }
     }
-    if ($account !== null && $view === 'sync' && in_array($verb, ['sync-now', 'sync-interval'], strict: true)) {
+    if ($account instanceof Account && $view === 'sync' && in_array($verb, ['sync-now', 'sync-interval'], strict: true)) {
         try {
             $data['sync'] = $sync->status();
         } catch (AppException) {
             $data = [];
         }
     }
-    if ($account === null || ($verb !== 'generate' && !isset($data['sync']))) {
-        $view = $account === null ? 'login' : 'error';
+    if ($view === 'users' && $account instanceof Account && $error instanceof AppException) {
+        $data['users'] = $credentials->accounts();
+    }
+    if (!$account instanceof Account || ($verb !== 'generate' && $view !== 'profile' && !isset($data['sync']) && !isset($data['users']))) {
+        $view = $account instanceof Account ? 'error' : 'login';
     }
 }
 
