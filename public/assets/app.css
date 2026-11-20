@@ -124,13 +124,11 @@ img, video, audio { max-width: 100%; }
 .back-link:hover { text-decoration: underline; }
 .form-grid { display: grid; gap: 17px; }
 .form-grid > label { display: grid; gap: 6px; font-weight: 690; }
-.form-grid input:not([type=checkbox]), .form-grid textarea, .form-grid select { width: 100%; min-height: 45px; padding: 9px 11px; border: 1px solid var(--control); border-radius: 9px; background: var(--paper); font-weight: 480; }
+.form-grid input, .form-grid textarea, .form-grid select { width: 100%; min-height: 45px; padding: 9px 11px; border: 1px solid var(--control); border-radius: 9px; background: var(--paper); font-weight: 480; }
 .form-grid input:disabled { background: var(--raised); }
 .form-grid input[type=file] { padding: 7px; }
 .form-grid input::file-selector-button { padding: 5px 9px; margin-right: 8px; background: var(--accent-surface); border: 0; border-radius: 6px; font: inherit; color: var(--accent); cursor: pointer; }
 .form-grid textarea { resize: vertical; }
-.form-grid > .check { grid-template-columns: 19px 1fr; gap: 8px; align-items: start; font-size: .89rem; font-weight: 520; }
-.check input { width: 17px; height: 17px; accent-color: var(--accent); margin: 3px 0 0; }
 .form-grid > .button { justify-self: start; }
 .lesson { max-width: 750px; }
 .notice { background: var(--accent-surface); color: var(--accent-hover); padding: 12px 14px; border-radius: 10px; margin: 0 0 14px; font-size: .92rem; }

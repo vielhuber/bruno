@@ -119,11 +119,8 @@ try {
             if ($type === 'test' && $document === null) {
                 throw new AppException('Bitte einen anonymisierten Test hochladen.', 422);
             }
-            if ($document !== null && input($_POST, key: 'consent') !== 'yes') {
-                throw new AppException('Bitte die Zustimmung zur Verarbeitung des anonymisierten Dokuments bestätigen.', 422);
-            }
-            if ($type === 'vocabulary' && (!$settings['fal'] || input($_POST, key: 'pictureConsent') !== 'yes')) {
-                throw new AppException('Vokabelstapel benötigen den fal.ai-Zugang und die Freigabe für ein Bild je Karte.', 422);
+            if ($type === 'vocabulary' && !$settings['fal']) {
+                throw new AppException('Die Bildgenerierung für Vokabelstapel ist noch nicht eingerichtet.', 503);
             }
 
             $content = $gateway->create($title, $focus, $type, $document, $owned['text'] ?? '');

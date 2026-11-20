@@ -219,17 +219,11 @@ class Editor {
     let $deck = this.$form.elements.namedItem("deck");
     let $title = this.$form.elements.namedItem("title");
     let $type = this.$form.elements.namedItem("type");
-    let $consent = this.$form.elements.namedItem("consent");
     let $document = this.$form.elements.namedItem("document");
-    let $pictures = this.$form.elements.namedItem("pictureConsent");
-    let $pictureLabel = this.$form.querySelector("[data-picture-consent]");
     let refresh = () => {
       $title.disabled = $deck.value !== "0";
       $title.required = !$title.disabled;
       $document.required = $type.value === "test";
-      $consent.required = $document.files.length > 0;
-      $pictures.required = $type.value === "vocabulary";
-      $pictureLabel.hidden = !$pictures.required;
     };
     $deck.addEventListener("change", () => {
       let vocabulary = $deck.selectedOptions[0]?.dataset.vocabulary === "yes";

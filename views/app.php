@@ -58,8 +58,8 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <link rel="icon" type="image/svg+xml" href="/assets/icon.svg?v=4">
     <link rel="apple-touch-icon" href="/assets/icon-192.png?v=4">
     <link rel="manifest" href="/manifest.webmanifest?v=4">
-    <link rel="stylesheet" href="/assets/app.css?v=6.1">
-    <script defer src="/assets/app.js"></script>
+    <link rel="stylesheet" href="/assets/app.css?v=7">
+    <script defer src="/assets/app.js?v=7"></script>
 </head>
 <body class="<?= $account === null ? 'guest' : 'signed-in' ?>">
 <?php if ($account === null): ?>
@@ -254,12 +254,6 @@ if ($view === 'create' && !isset($_POST['type'])) {
                     </label>
                     <label>Schulbuchauszug oder anonymisierter Test <span class="muted small">PDF, PNG, JPG, TXT · max. 8 MB</span>
                         <input type="file" name="document" accept="application/pdf,image/jpeg,image/png,text/plain">
-                    </label>
-                    <label class="check"><input type="checkbox" name="consent" value="yes">
-                        <span>Ich habe die Vorlage anonymisiert und stimme der Übermittlung an den KI-Dienst zu.</span>
-                    </label>
-                    <label class="check" data-picture-consent><input type="checkbox" name="pictureConsent" value="yes">
-                        <span>Je Vokabel eine Bild-Eselsbrücke mit fal.ai erstellen (kostenpflichtig).</span>
                     </label>
                     <button type="submit" class="button primary" <?= $settings['ai'] ? '' : 'disabled' ?>>Karten erstellen</button>
                 </form>
