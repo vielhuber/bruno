@@ -114,7 +114,7 @@ def deck_list(col, owner):
             'new': node.new_count,
             'vocabulary': meta.get('vocabulary', False),
         })
-    return sorted(decks, key=lambda deck: (deck['due'] == 0, deck['name'].casefold()))
+    return sorted(decks, key=lambda deck: deck['name'].casefold())
 
 
 class PlainText(HTMLParser):
