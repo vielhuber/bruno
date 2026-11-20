@@ -472,7 +472,12 @@ if ($view === 'create' && !isset($_POST['type'])) {
                 <?php $card = $data['card']; ?>
                 <a class="back-link" href="<?= $route('review') ?>">← Wiederholen</a>
                 <header class="screen-header">
-                    <div><p class="eyebrow">Wiederholen</p><h1><?= escape($data['name']) ?></h1></div>
+                    <div>
+                        <p class="eyebrow">Wiederholen</p><h1><?= escape($data['name']) ?></h1>
+                        <?php if ($card && $data['vocabulary']): ?>
+                            <p class="small muted"><?= $data['reversed'] ? 'Rückseite zuerst' : 'Vorderseite zuerst' ?></p>
+                        <?php endif; ?>
+                    </div>
                     <a class="button secondary" href="<?= $route('lesson', $deckId) ?>">Lernen</a>
                 </header>
                 <?php if (!$card): ?>
@@ -521,7 +526,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                         </article>
                         <?php if ($settings['ai'] && $card['question'] !== '' && $card['answer'] !== ''): ?>
                             <form method="post" enctype="multipart/form-data" class="panel form-grid answer-form" data-grade>
-                                <?php $hidden(verb: 'grade', fields: $cardFields); ?>
+                                <?php $hidden(verb: 'grade', fields: $cardFields + ['reversed' => (int) $data['reversed']]); ?>
                                 <label>Deine Antwort <textarea name="answer" rows="2" maxlength="1500"></textarea></label>
                                 <div class="inline-actions">
                                     <button class="button secondary" type="button" data-record>Aufnehmen</button>

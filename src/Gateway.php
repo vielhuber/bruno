@@ -27,6 +27,8 @@ final class Gateway
     {
         $instruction = match ($type) {
             'vocabulary' => 'Erstelle Vokabelkarten: front ist immer Deutsch, back immer die angegebene Fremdsprache. '
+                . 'Sortiere fremdsprachig beginnende Vorlagen (etwa lateinische Wortlisten) in diese Richtung um. '
+                . 'Nur eine Karte je Vokabelpaar; keine Karte in Gegenrichtung erstellen. '
                 . 'Für jede Karte zusätzlich hint (eine merkbare Eselsbrücke auf Deutsch) und imagePrompt '
                 . '(kurze harmlose visuelle Szene zur Eselsbrücke, keine Personenreferenzen, keine Schrift im Bild). '
                 . 'Aus Vorlagen nur klar belegte Vokabeln extrahieren. Ohne Vorlage ist die Fremdsprache im Thema angegeben.',

@@ -97,7 +97,7 @@ def dispatch(directory, request):
             return generate(col, owner, request)
         deck = owned_deck(col, request['deck'], owner)
         if action == 'study':
-            return {'name': deck['name'], 'card': study(col, deck)}
+            return {'name': deck['name'], 'card': study(col, deck), 'vocabulary': metadata(deck).get('vocabulary') is True}
         if action == 'answer':
             return answer_card(col, deck, request)
         if action == 'lesson':

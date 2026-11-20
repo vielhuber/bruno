@@ -8,6 +8,9 @@ use PDOException;
 
 require __DIR__ . '/../src/bootstrap.php';
 
+const REVIEW_BLOCK_SIZE = 4;
+const REVIEW_CYCLE_BLOCKS = 3;
+
 header('Cache-Control: no-store');
 header("Content-Security-Policy: default-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
 header('X-Content-Type-Options: nosniff');
@@ -46,6 +49,42 @@ function go(string $view = 'home', int $deck = 0): never
     exit;
 }
 
+/**
+ * Reverse the presentation for one randomly placed block without changing the scheduled card.
+ *
+ * @param array{owner: string, deck: int} $request
+ * @return array<string, mixed>
+ */
+function study(AnkiBridge $anki, array $request): array
+{
+    $data = $anki->call('study', $request);
+    $data['reversed'] = false;
+    $deck = $request['deck'];
+    if (!$data['vocabulary']) {
+        unset($_SESSION['reviewBlocks'][$deck]);
+        return $data;
+    }
+    if ($data['card'] === null) {
+        return $data;
+    }
+
+    $_SESSION['reviewBlocks'][$deck] ??= [
+        'answered' => 0,
+        'reverseBlock' => random_int(0, REVIEW_CYCLE_BLOCKS - 1),
+    ];
+    $block = $_SESSION['reviewBlocks'][$deck];
+    $data['reversed'] = intdiv($block['answered'], REVIEW_BLOCK_SIZE) === $block['reverseBlock'];
+    if ($data['reversed']) {
+        $card = $data['card'];
+        $data['card']['question'] = $card['answer'];
+        $data['card']['answer'] = $card['question'];
+        $data['card']['questionMedia'] = $card['answerMedia'];
+        $data['card']['answerMedia'] = $card['questionMedia'];
+    }
+
+    return $data;
+}
+
 try {
     $verb = input($_POST, key: 'verb');
     $view = input($_GET, key: 'view') ?: 'home';
@@ -56,7 +95,7 @@ try {
         $account = $credentials->resume($sessionAccount['id'], $sessionAccount['passwordVersion']);
     }
     if ($sessionAccount !== null && !$account instanceof Account) {
-        unset($_SESSION['account'], $_SESSION['reviewSecret'], $_SESSION['deckDraft']);
+        unset($_SESSION['account'], $_SESSION['reviewSecret'], $_SESSION['deckDraft'], $_SESSION['reviewBlocks']);
         session_regenerate_id(delete_old_session: true);
     }
     $request = ['owner' => $account->id ?? '', 'deck' => $deckId];
@@ -259,14 +298,22 @@ try {
                 throw new AppException('Bitte die Lernrunde neu öffnen.', 422);
             }
             $anki->call('answer', $request + $values + ['rating' => $rating, 'elapsed' => time() - $values['shown']]);
+            if (isset($_SESSION['reviewBlocks'][$deckId])) {
+                $_SESSION['reviewBlocks'][$deckId]['answered']++;
+                if ($_SESSION['reviewBlocks'][$deckId]['answered'] === REVIEW_BLOCK_SIZE * REVIEW_CYCLE_BLOCKS) {
+                    unset($_SESSION['reviewBlocks'][$deckId]);
+                }
+            }
             go('study', $deckId);
         }
 
         if ($verb === 'grade') {
-            $card = $anki->call('study', $request)['card'];
+            $presentation = study($anki, $request);
+            $card = $presentation['card'];
             if (
                 !$card || $card['id'] !== (int) input($_POST, key: 'card') || $card['reps'] !== (int) input($_POST, key: 'reps')
                 || $card['modified'] !== (int) input($_POST, key: 'modified')
+                || (int) $presentation['reversed'] !== (int) input($_POST, key: 'reversed')
             ) {
                 throw new AppException('Diese Karte ist nicht mehr aktuell.', 409);
             }
@@ -349,7 +396,7 @@ try {
         'preview' => ['draft' => $_SESSION['deckDraft']],
         'home', 'create', 'learn', 'review' => ['decks' => $anki->call('list', $request)],
         'lesson' => ['lesson' => $anki->call('lesson', $request)],
-        'study' => $anki->call('study', $request),
+        'study' => study($anki, $request),
         'backups' => ['backups' => $backupHistory->entries()],
         'sync' => ['sync' => $sync->status()],
         default => throw new AppException('Diese Seite gibt es nicht.', 404),
