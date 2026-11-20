@@ -58,7 +58,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <link rel="icon" type="image/svg+xml" href="/assets/icon.svg?v=4">
     <link rel="apple-touch-icon" href="/assets/icon-192.png?v=4">
     <link rel="manifest" href="/manifest.webmanifest?v=4">
-    <link rel="stylesheet" href="/assets/app.css?v=5">
+    <link rel="stylesheet" href="/assets/app.css?v=6">
     <script defer src="/assets/app.js"></script>
 </head>
 <body class="<?= $account === null ? 'guest' : 'signed-in' ?>">
@@ -197,6 +197,9 @@ if ($view === 'create' && !isset($_POST['type'])) {
                 <?php if ($backups): ?>
                     <section aria-labelledby="backup-history">
                         <header class="section-header"><h2 id="backup-history">Verlauf</h2><span class="small muted">Zeitzone: Berlin</span></header>
+                        <?php if (!$canDeleteBackups): ?>
+                            <p class="notice" id="backup-delete-permission">Backups können nur mit dem dafür freigegebenen Konto gelöscht werden.</p>
+                        <?php endif; ?>
                         <div class="panel backup-list">
                             <table aria-labelledby="backup-history">
                                 <thead><tr><th scope="col">Erstellt</th><th scope="col">Größe</th></tr></thead>
@@ -205,15 +208,20 @@ if ($view === 'create' && !isset($_POST['type'])) {
                                         <?php $createdAt = $backup['createdAt']; ?>
                                         <tr>
                                             <td>
-                                                <time datetime="<?= $createdAt->format(DATE_ATOM) ?>"><?= $createdAt->format('d.m.Y') ?> <span class="muted"><?= $createdAt->format('H:i:s') ?></span></time>
+                                                <time datetime="<?= $createdAt->format(DATE_ATOM) ?>"><span><?= $createdAt->format('d.m.Y') ?></span> <span class="muted"><?= $createdAt->format('H:i:s') ?></span></time>
                                                 <?php if ($canDeleteBackups): ?>
-                                                    <details class="backup-delete small">
-                                                        <summary>Löschen</summary>
+                                                    <details class="backup-delete">
+                                                        <summary class="button secondary">Backup löschen</summary>
                                                         <form method="post" action="<?= $route('backups') ?>">
                                                             <?php $hidden(verb: 'delete-backup', fields: ['backup' => $backup['id']]); ?>
                                                             <button class="button secondary" type="submit">Endgültig löschen</button>
                                                         </form>
                                                     </details>
+                                                <?php endif; ?>
+                                                <?php if (!$canDeleteBackups): ?>
+                                                    <div class="backup-delete">
+                                                        <button class="button secondary" type="button" disabled aria-describedby="backup-delete-permission">Backup löschen</button>
+                                                    </div>
                                                 <?php endif; ?>
                                             </td>
                                             <td><?= $formatSize($backup['bytes']) ?></td>
