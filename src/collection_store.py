@@ -96,11 +96,8 @@ def save_deck(col, deck, meta):
 
 def deck_list(col, owner):
     tree = col.sched.deck_due_tree()
-    pending = list(tree.children) if tree else []
     decks = []
-    while pending:
-        node = pending.pop()
-        pending.extend(node.children)
+    for node in tree.children if tree else ():
         if node.children or node.filtered:
             continue
         deck = col.decks.get(node.deck_id, default=False)
