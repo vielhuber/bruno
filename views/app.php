@@ -62,7 +62,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <link rel="icon" type="image/svg+xml" href="/assets/icon.svg?v=4">
     <link rel="apple-touch-icon" href="/assets/icon-192.png?v=4">
     <link rel="manifest" href="/manifest.webmanifest?v=4">
-    <link rel="stylesheet" href="/assets/app.css?v=10">
+    <link rel="stylesheet" href="/assets/app.css?v=11">
     <script defer src="/assets/app.js?v=12"></script>
 </head>
 <body class="<?= $account === null ? 'guest' : 'signed-in' ?>">
@@ -337,7 +337,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
             <?php break;
                 case 'create': ?>
                 <header class="screen-header">
-                    <div><p class="eyebrow">Schritt 1 von 3</p><h1>Stapel erstellen</h1></div>
+                    <div><p class="eyebrow">Schritt 1 von 2</p><h1>Stapel erstellen</h1></div>
                     <?php if (isset($_SESSION['deckDraft'])): ?>
                         <a class="button secondary" href="<?= $route('preview') ?>">Offener Entwurf</a>
                     <?php endif; ?>
@@ -379,24 +379,30 @@ if ($view === 'create' && !isset($_POST['type'])) {
                 <?php
                 $draft = $data['draft'];
                     $proposal = $draft['payload'];
-                    $approved = $draft['approved'];
                     $generating = $draft['generating'];
+                    $autoGenerate = $generating && $errorMessage === '';
                     $cardCount = count($proposal['cards']);
-                    $saveLabel = $proposal['deck'] ? 'Karten hinzufügen' : 'Stapel anlegen';
+                    $saveLabel = $proposal['deck'] ? 'Freigeben und Karten hinzufügen' : 'Freigeben und Stapel anlegen';
                     $heading = match (true) {
-                        $generating => 'Kartenvorschau wird erstellt',
-                        $approved => $saveLabel,
-                        default => 'Karten prüfen',
+                        !$generating => 'Karten prüfen',
+                        $autoGenerate => 'Kartenvorschau wird erstellt',
+                        default => 'Kartenvorschau unterbrochen',
                     };
                     ?>
                 <header class="screen-header">
                     <div>
-                        <p class="eyebrow">Schritt <?= $approved ? 3 : 2 ?> von 3</p>
+                        <p class="eyebrow">Schritt 2 von 2</p>
                         <h1><?= $heading ?></h1>
                         <p class="muted"><?= escape($proposal['title']) ?> · <?= $cardCount ?> von <?= $draft['cardCount'] ?> Karten</p>
                     </div>
                 </header>
-                <?php if (!$approved && !$generating): ?>
+                <?php if ($autoGenerate): ?>
+                    <progress class="preview-progress" aria-label="Fortschritt der Kartenvorschau" max="<?= $draft['cardCount'] ?>" <?= $cardCount > 0 ? 'value="' . $cardCount . '"' : '' ?>></progress>
+                    <form id="preview-batch" method="post" action="<?= $route('preview') ?>" data-generate-batch hidden>
+                        <?php $hidden(verb: 'generate-batch', fields: ['draft' => $draft['id'], 'offset' => $cardCount]); ?>
+                    </form>
+                <?php endif; ?>
+                <?php if (!$generating): ?>
                     <div class="deck-grid">
                         <section class="panel form-grid">
                             <h2>Lerntext</h2>
@@ -415,20 +421,18 @@ if ($view === 'create' && !isset($_POST['type'])) {
                         <?php endforeach; ?>
                     </div>
                 <?php endif; ?>
-                <?php if ($approved): ?>
-                    <p class="panel">Die Karten sind freigegeben, aber noch nicht in Anki gespeichert.</p>
-                <?php endif; ?>
+                <?php if ($autoGenerate): ?><noscript><?php endif; ?>
                 <div class="inline-actions page-actions">
-                    <?php if ($generating): ?>
-                        <form method="post" action="<?= $route('preview') ?>" <?= $errorMessage === '' ? 'data-generate-batch' : '' ?>>
-                            <?php $hidden(verb: 'generate-batch', fields: ['draft' => $draft['id'], 'offset' => $cardCount]); ?>
-                            <button type="submit" class="button primary">Vorschau fortsetzen</button>
-                        </form>
+                    <?php if ($autoGenerate): ?>
+                        <button type="submit" form="preview-batch" class="button primary">Vorschau fortsetzen</button>
+                    <?php endif; ?>
+                    <?php if ($generating && !$autoGenerate): ?>
+                        <a href="<?= $route('preview') ?>" class="button primary">Vorschau fortsetzen</a>
                     <?php endif; ?>
                     <?php if (!$generating): ?>
                         <form method="post" action="<?= $route('preview') ?>">
-                            <?php $hidden(verb: $approved ? 'save-draft' : 'approve-draft', fields: ['draft' => $draft['id']]); ?>
-                            <button type="submit" class="button primary"><?= $approved ? $saveLabel : 'Karten freigeben' ?></button>
+                            <?php $hidden(verb: 'save-preview', fields: ['draft' => $draft['id']]); ?>
+                            <button type="submit" class="button primary"><?= $saveLabel ?></button>
                         </form>
                     <?php endif; ?>
                     <form method="post" action="<?= $route('preview') ?>">
@@ -436,6 +440,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                         <button type="submit" class="button secondary">Entwurf verwerfen</button>
                     </form>
                 </div>
+                <?php if ($autoGenerate): ?></noscript><?php endif; ?>
             <?php break;
                 case 'lesson': ?>
                 <?php $lesson = $data['lesson']; ?>

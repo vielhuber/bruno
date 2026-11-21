@@ -305,7 +305,6 @@ try {
             $previousLesson = $owned['text'] ?? '';
             $_SESSION['deckDraft'] = [
                 'id' => bin2hex(random_bytes(16)),
-                'approved' => false,
                 'generating' => true,
                 'cardCount' => $cardCount,
                 'type' => $type,
@@ -323,7 +322,12 @@ try {
             go('preview');
         }
 
-        if (in_array($verb, ['generate-batch', 'approve-draft', 'save-draft', 'discard-draft'], strict: true)) {
+        // Old approval forms did not explicitly confirm saving to Anki.
+        if ($view === 'preview' && in_array($verb, ['approve-draft', 'save-draft'], strict: true)) {
+            go('preview');
+        }
+
+        if (in_array($verb, ['generate-batch', 'save-preview', 'discard-draft'], strict: true)) {
             $draft = $_SESSION['deckDraft'] ?? null;
             if ($draft === null || !hash_equals($draft['id'], input($_POST, key: 'draft', maximum: 32))) {
                 throw new AppException('Dieser Entwurf ist nicht mehr aktuell. Bitte die aktuelle Vorschau öffnen.', 409);
@@ -377,13 +381,6 @@ try {
             }
             if ($draft['generating']) {
                 throw new AppException('Bitte warten, bis die Vorschau fertig ist.', 409);
-            }
-            if ($verb === 'approve-draft') {
-                $_SESSION['deckDraft']['approved'] = true;
-                go('preview');
-            }
-            if (!$draft['approved']) {
-                throw new AppException('Bitte die Karten erst prüfen und freigeben.', 409);
             }
             $result = $anki->call('generate', $draft['payload'] + ['owner' => $account->id]);
             unset($_SESSION['deckDraft']);
