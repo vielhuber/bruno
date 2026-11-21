@@ -388,12 +388,17 @@ try {
             go('lesson', $result['id']);
         }
 
-        if ($verb === 'queue') {
+        if ($view === 'lesson' && $verb === 'queue') {
+            $_SESSION['flash'] = 'Dieses Formular ist nicht mehr aktuell. Es wurde nichts beauftragt.';
+            go('lesson', $deckId);
+        }
+
+        if ($verb === 'queue-video') {
             if (!$settings['fal']) {
                 throw new AppException('fal.ai ist noch nicht eingerichtet.', 503);
             }
-            $anki->call('queue', $request + ['kind' => input($_POST, key: 'kind')]);
-            $_SESSION['flash'] = 'Medium beauftragt. Die Generierung läuft im Hintergrund.';
+            $anki->call('queue-video', $request);
+            $_SESSION['flash'] = 'Video beauftragt. Die Generierung läuft im Hintergrund.';
             go('lesson', $deckId);
         }
 

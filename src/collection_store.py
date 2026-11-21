@@ -353,15 +353,15 @@ def lesson(col, deck):
     }
 
 
-def queue_lesson(col, deck, kind):
+def queue_video(col, deck, model):
     meta = metadata(deck)
     text = lesson(col, deck)['text']
-    if not text or kind not in {'audio', 'video'}:
+    if not text:
         raise Rejected('Für diesen Stapel liegt noch kein Lerntext vor.', 422)
     jobs = meta.setdefault('jobs', {})
-    if meta.get(kind) or jobs.get(kind, {}).get('state') in {'queued', 'submitting', 'working', 'unknown'}:
-        raise Rejected('Das Medium wurde bereits beauftragt.', 409)
-    jobs[kind] = {'state': 'queued', 'prompt': text}
+    if jobs.get('video', {}).get('state') in {'queued', 'submitting', 'working', 'unknown'}:
+        raise Rejected('Das Video wurde bereits beauftragt.', 409)
+    jobs['video'] = {'state': 'queued', 'prompt': text, 'model': model}
     save_deck(col, deck, meta)
 
 

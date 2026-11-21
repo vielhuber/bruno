@@ -443,7 +443,12 @@ if ($view === 'create' && !isset($_POST['type'])) {
                 <?php if ($autoGenerate): ?></noscript><?php endif; ?>
             <?php break;
                 case 'lesson': ?>
-                <?php $lesson = $data['lesson']; ?>
+                <?php
+                $lesson = $data['lesson'];
+                    $videoState = $lesson['jobs']['video'] ?? '';
+                    $canGenerateVideo = in_array($videoState, ['', 'failed', 'ready'], strict: true)
+                        && $settings['fal'] && $lesson['text'] !== '';
+                    ?>
                 <a class="back-link" href="<?= $route('learn') ?>">← Lernen</a>
                 <header class="screen-header">
                     <div><p class="eyebrow">Lernen</p><h1><?= escape($lesson['name']) ?></h1></div>
@@ -451,35 +456,37 @@ if ($view === 'create' && !isset($_POST['type'])) {
                 <article class="panel lesson">
                     <h2>Lerntext</h2>
                     <p class="preline"><?= escape($lesson['text'] ?: 'Kein Lerntext vorhanden.') ?></p>
-                    <?php foreach (['audio' => 'Audio', 'video' => 'Video'] as $kind => $name): ?>
-                        <?php $mediaState = $lesson['jobs'][$kind] ?? ''; ?>
+                    <?php if ($lesson['audio'] !== ''): ?>
                         <section class="lesson-media">
-                        <h3><?= $name ?></h3>
-                        <?php if ($lesson[$kind] !== '' && $kind === 'audio'): ?>
-                            <audio controls preload="metadata" src="<?= $mediaUrl($deckId, $lesson[$kind]) ?>"></audio>
+                            <h3>Audio</h3>
+                            <audio controls preload="metadata" src="<?= $mediaUrl($deckId, $lesson['audio']) ?>"></audio>
+                        </section>
+                    <?php endif; ?>
+                    <section class="lesson-media">
+                        <h3>Video</h3>
+                        <?php if ($lesson['video'] !== ''): ?>
+                            <video controls preload="metadata" playsinline src="<?= $mediaUrl($deckId, $lesson['video']) ?>"></video>
                         <?php endif; ?>
-                        <?php if ($lesson[$kind] !== '' && $kind === 'video'): ?>
-                            <video controls preload="metadata" playsinline src="<?= $mediaUrl($deckId, $lesson[$kind]) ?>"></video>
+                        <?php if ($videoState === 'failed'): ?>
+                            <p class="muted small">Generierung fehlgeschlagen.</p>
                         <?php endif; ?>
-                        <?php if ($lesson[$kind] === '' && !in_array($mediaState, ['', 'failed'], strict: true)): ?>
-                            <p class="muted small"><?= $mediaState === 'unknown' ? 'Auftragsstatus unklar. Kein neuer Auftrag.' : 'In Bearbeitung.' ?></p>
+                        <?php if (in_array($videoState, ['queued', 'submitting', 'working', 'unknown'], strict: true)): ?>
+                            <p class="muted small"><?= $videoState === 'unknown' ? 'Auftragsstatus unklar. Kein neuer Auftrag.' : 'In Bearbeitung.' ?></p>
                         <?php endif; ?>
-                        <?php if ($lesson[$kind] === '' && in_array($mediaState, ['', 'failed'], strict: true) && $settings['fal'] && $lesson['text'] !== ''): ?>
+                        <?php if ($canGenerateVideo): ?>
                             <?php
-                            $estimate = $lesson['estimatedMediaCosts'][$kind];
-                            $price = $estimate < 0.01 ? 'unter 0,01' : 'ca. ' . number_format($estimate, decimals: 2, decimal_separator: ',');
+                                $videoLabel = $lesson['video'] === '' ? 'Video generieren' : 'Video neu generieren';
+                            $price = number_format($lesson['estimatedVideoCost'], decimals: 2, decimal_separator: ',');
                             ?>
-                            <?php if ($mediaState === 'failed'): ?><p class="muted small">Generierung fehlgeschlagen.</p><?php endif; ?>
                             <form method="post" action="<?= $route('lesson', $deckId) ?>">
-                                <?php $hidden(verb: 'queue', fields: ['deck' => $deckId, 'kind' => $kind]); ?>
-                                <button class="button secondary" type="submit"><?= $name ?> generieren (<?= $price ?>&nbsp;US-$)</button>
+                                <?php $hidden(verb: 'queue-video', fields: ['deck' => $deckId]); ?>
+                                <button class="button secondary" type="submit"><?= $videoLabel ?> (ca. <?= $price ?>&nbsp;US-$)</button>
                             </form>
                         <?php endif; ?>
-                        <?php if ($lesson[$kind] === '' && $mediaState === '' && (!$settings['fal'] || $lesson['text'] === '')): ?>
+                        <?php if ($lesson['video'] === '' && $videoState === '' && !$canGenerateVideo): ?>
                             <p class="muted small">Noch nicht verfügbar.</p>
                         <?php endif; ?>
-                        </section>
-                    <?php endforeach; ?>
+                    </section>
                     <?php if ($lesson['sources']): ?>
                         <section class="lesson-media"><h3>Lernvorlagen</h3>
                             <ul>

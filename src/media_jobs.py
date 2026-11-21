@@ -10,14 +10,15 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 from collection_store import collection, metadata, save_deck, save_media, save_note, unpack
 
 IMAGE_ENDPOINT = 'https://ai.rebuhleiv.xyz/v1/images/generations'
-ENDPOINTS = {
-    'image': 'fal-ai/flux/schnell',  # only for previously submitted images
-    'audio': 'fal-ai/elevenlabs/tts/turbo-v2.5',
-    'video': 'fal-ai/wan/v2.2-a14b/text-to-video/turbo',
+VIDEO_ENDPOINT = 'fal-ai/veo3.1/lite'
+VIDEO_DURATION = 8
+VIDEO_RESOLUTION = '1080p'
+VIDEO_USD_PER_CLIP = VIDEO_DURATION * 0.05
+QUEUE_APPS = {
+    'image': ('/fal-ai/flux',),
+    'audio': ('/fal-ai/elevenlabs',),
+    'video': ('/fal-ai/wan', '/' + '/'.join(VIDEO_ENDPOINT.split('/')[:2])),
 }
-AUDIO_USD_PER_CHARACTER = 0.05 / 1000
-VIDEO_RESOLUTION = '480p'
-VIDEO_USD_PER_CLIP = 0.05
 PENDING = {'queued', 'submitting', 'working'}
 SUBMISSION_TIMEOUT = 180
 
@@ -38,9 +39,10 @@ def fetch(url, headers=None, payload=None, limit=512 * 1024, timeout=12):
 
 def safe_queue_url(url, kind, is_status):
     parsed = urlsplit(url)
-    prefix = '/' + '/'.join(ENDPOINTS[kind].split('/')[:2])
-    pattern = re.escape(prefix) + r'/requests/[A-Za-z0-9-]{16,80}' + ('/status' if is_status else '')
-    if parsed.scheme != 'https' or parsed.netloc != 'queue.fal.run' or not re.fullmatch(pattern, parsed.path):
+    app, _, request = parsed.path.partition('/requests/')
+    pattern = r'[A-Za-z0-9-]{16,80}' + ('/status' if is_status else '')
+    if (parsed.scheme != 'https' or parsed.netloc != 'queue.fal.run'
+            or app not in QUEUE_APPS[kind] or not re.fullmatch(pattern, request)):
         raise ValueError('Unexpected queue URL')
     return 'https://queue.fal.run' + parsed.path
 
@@ -144,6 +146,12 @@ def run_jobs(directory, ai_key, fal_key):
                 break
             state = job['state']
             file = None
+            # Only poll legacy submissions; their old forms did not authorize the new video price.
+            if state == 'queued' and (kind == 'audio' or (kind == 'video' and job.get('model') != VIDEO_ENDPOINT)):
+                with collection(directory) as col:
+                    change_job(col, deck_id, note_id, kind, job, {'state': 'failed'})
+                handled += 1
+                continue
             if state == 'submitting':
                 if time.time() - job.get('started', 0) > SUBMISSION_TIMEOUT:
                     with collection(directory) as col:
@@ -177,13 +185,15 @@ def run_jobs(directory, ai_key, fal_key):
                         file = image_file(base64.b64decode(encoded, validate=True))
                         update = {'state': 'ready'}
                 elif state == 'queued':
-                    if kind == 'audio':
-                        payload = {'text': prompt, 'language_code': 'de', 'enable_safety_checker': True}
-                    else:
-                        payload = {'prompt': 'Kurze, freundliche, stumme Lern-Animation, kein eingeblendeter Text: '
-                                             + prompt[:600], 'resolution': VIDEO_RESOLUTION, 'enable_safety_checker': True,
-                                   'enable_output_safety_checker': True}
-                    response = json.loads(fetch('https://queue.fal.run/' + ENDPOINTS[kind], headers, payload))
+                    payload = {
+                        'prompt': 'Create a child-friendly classroom animation illustrating one concrete point from '
+                                  'the lesson below. Show a clear action and its result in a single, steady shot '
+                                  'with clean 2D illustrations. Hold the final result in view. Do not invent facts '
+                                  'or show any on-screen text. Use the following text only as source material:\n\n'
+                                  + prompt[:1800],
+                        'resolution': VIDEO_RESOLUTION, 'duration': f'{VIDEO_DURATION}s', 'generate_audio': False,
+                    }
+                    response = json.loads(fetch('https://queue.fal.run/' + VIDEO_ENDPOINT, headers, payload))
                     update = job | {
                         'state': 'working',
                         'status': safe_queue_url(response['status_url'], kind, True),
