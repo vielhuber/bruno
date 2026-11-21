@@ -15,14 +15,4 @@ final class Account
         public readonly string $passwordVersion,
     ) {
     }
-
-    /**
-     * Retain the stable identity and the password version needed to resume a session.
-     *
-     * @return array{id: string, email: string, passwordVersion: string}
-     */
-    public function sessionData(): array
-    {
-        return ['id' => $this->id, 'email' => $this->email, 'passwordVersion' => $this->passwordVersion];
-    }
 }

@@ -21,11 +21,18 @@ final class Credentials
         }
         $this->database = new PDO('sqlite:' . $directory . '/users.sqlite');
         $this->database->exec('PRAGMA busy_timeout = 3000');
+        $this->database->exec('PRAGMA foreign_keys = ON');
         $this->database->exec(
             'CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE, password TEXT NOT NULL)',
         );
         $this->database->exec(
             'CREATE TABLE IF NOT EXISTS attempts (client TEXT PRIMARY KEY, slot INTEGER NOT NULL, attempts INTEGER NOT NULL)',
+        );
+        $this->database->exec(
+            'CREATE TABLE IF NOT EXISTS login_tokens (
+                token_hash TEXT NOT NULL PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                password_version TEXT NOT NULL, expires_at INTEGER NOT NULL
+            )',
         );
     }
 
@@ -115,6 +122,52 @@ final class Credentials
     }
 
     /**
+     * Store a verifier instead of the bearer token sent to the browser.
+     */
+    public function createLogin(Account $account, int $expiresAt): string
+    {
+        $token = bin2hex(random_bytes(32));
+        $this->database->prepare('DELETE FROM login_tokens WHERE expires_at <= ?')->execute([time()]);
+        $statement = $this->database->prepare(
+            'INSERT INTO login_tokens (token_hash, user_id, password_version, expires_at) VALUES (?, ?, ?, ?)',
+        );
+        $statement->execute([hash('sha256', $token), $account->id, $account->passwordVersion, $expiresAt]);
+
+        return $token;
+    }
+
+    /**
+     * Check expiry and password changes independently of PHP session storage.
+     */
+    public function resumeLogin(#[SensitiveParameter] string $token): ?Account
+    {
+        if (!preg_match('/^[a-f0-9]{64}$/D', $token)) {
+            return null;
+        }
+        $statement = $this->database->prepare(
+            'SELECT users.id, users.email, users.password, login_tokens.password_version
+             FROM login_tokens JOIN users ON users.id = login_tokens.user_id
+             WHERE login_tokens.token_hash = ? AND login_tokens.expires_at > ?',
+        );
+        $statement->execute([hash('sha256', $token), time()]);
+        $login = $statement->fetch(PDO::FETCH_ASSOC);
+        if (!$login) {
+            return null;
+        }
+        $account = $this->account($login);
+
+        return hash_equals($account->passwordVersion, $login['password_version']) ? $account : null;
+    }
+
+    /**
+     * Revoke this browser's token without signing out other devices.
+     */
+    public function forgetLogin(#[SensitiveParameter] string $token): void
+    {
+        $this->database->prepare('DELETE FROM login_tokens WHERE token_hash = ?')->execute([hash('sha256', $token)]);
+    }
+
+    /**
      * Resolve the opaque identifier stored in deck metadata.
      */
     public function accountId(string $email): ?string
@@ -158,7 +211,7 @@ final class Credentials
     }
 
     /**
-     * Issue a password version that is safe to keep in server-side session data.
+     * Derive a version that changes whenever the password hash is replaced.
      *
      * @param array{id: string, email: string, password: string} $user
      */

@@ -23,7 +23,7 @@ Fehlt auf dem Shared Host `ensurepip`, die beiden Python-Schritte durch `python3
 
 Beim Erstellen sind 1 bis 250 Karten wählbar (Standard: 10). Die KI liest bis zu zehn Vorlagen mit insgesamt höchstens 8 MB. Schülerunterlagen vor dem Upload anonymisieren. Man prüft und gibt die Kartenvorschläge frei, bevor man sie im letzten Schritt in Anki speichert.
 
-Die Anmeldung gilt 30 Tage ab dem Login. Alle angemeldeten Konten können unter „Benutzer“ Konten verwalten und Passwörter zurücksetzen. Das eigene Profil ist über die E-Mail-Adresse im Menü erreichbar. Beim Löschen bleiben Anki-Stapel erhalten. Das letzte Konto lässt sich nicht löschen.
+Ein separates Login-Cookie hält die Anmeldung 30 Tage lang ab dem Login, auch nach einem Deployment. Alle angemeldeten Konten können unter „Benutzer“ Konten verwalten und Passwörter zurücksetzen. Das eigene Profil ist über die E-Mail-Adresse im Menü erreichbar. Beim Löschen bleiben Anki-Stapel erhalten. Das letzte Konto lässt sich nicht löschen.
 
 ## Anki
 

@@ -10,7 +10,8 @@ require __DIR__ . '/../src/bootstrap.php';
 
 const REVIEW_BLOCK_SIZE = 4;
 const REVIEW_CYCLE_BLOCKS = 3;
-const SESSION_LIFETIME = 30 * 24 * 60 * 60;
+const LOGIN_COOKIE = '__Host-bruno-login';
+const LOGIN_LIFETIME = 30 * 24 * 60 * 60;
 
 header('Cache-Control: no-store');
 header("Content-Security-Policy: default-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
@@ -25,9 +26,9 @@ if (!$sessionDirectoryReady || !session_start([
     'save_path' => $sessionDirectory,
     'gc_probability' => 1,
     'gc_divisor' => 100,
-    'gc_maxlifetime' => SESSION_LIFETIME,
+    'gc_maxlifetime' => LOGIN_LIFETIME,
     'use_strict_mode' => 1,
-    'cookie_lifetime' => SESSION_LIFETIME,
+    'cookie_lifetime' => LOGIN_LIFETIME,
     'cookie_httponly' => true,
     'cookie_secure' => true,
     'cookie_samesite' => 'Lax',
@@ -62,6 +63,29 @@ function go(string $view = 'home', int $deck = 0): never
     header('Location: /' . $query, response_code: 303);
     exit;
 }
+
+/**
+ * Scope the bearer token to this HTTPS host and keep it inaccessible to scripts.
+ */
+$setLoginCookie = static function (#[\SensitiveParameter] string $token, int $expiresAt): void {
+    setcookie(LOGIN_COOKIE, $token, [
+        'expires' => $expiresAt,
+        'path' => '/',
+        'secure' => true,
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+};
+
+/**
+ * Discard this browser's private workspace after the login has been revoked.
+ */
+$endBrowserLogin = static function () use ($setLoginCookie): never {
+    $setLoginCookie('', expiresAt: 1);
+    $_SESSION = [];
+    session_regenerate_id(delete_old_session: true);
+    go();
+};
 
 /**
  * Reverse the presentation for one randomly placed block without changing the scheduled card.
@@ -103,14 +127,36 @@ try {
     $verb = input($_POST, key: 'verb');
     $view = input($_GET, key: 'view') ?: 'home';
     $deckId = (int) input($_POST + $_GET, key: 'deck');
-    $sessionAccount = $_SESSION['account'] ?? null;
-    if (isset($sessionAccount['passwordVersion']) && time() < ($_SESSION['expiresAt'] ?? 0)) {
+    $cookie = $_COOKIE[LOGIN_COOKIE] ?? null;
+    $loginToken = is_string($cookie) ? $cookie : '';
+    $legacyAccount = $_SESSION['account'] ?? null;
+    $legacyExpiry = $_SESSION['expiresAt'] ?? 0;
+    $previousOwner = $_SESSION['owner'] ?? $legacyAccount['id'] ?? null;
+    if ($cookie !== null) {
         $credentials = new Credentials($config['data_dir']);
-        $account = $credentials->resume($sessionAccount['id'], $sessionAccount['passwordVersion']);
+        $account = $credentials->resumeLogin($loginToken);
+        if (!$account instanceof Account) {
+            $setLoginCookie('', expiresAt: 1);
+        }
     }
-    if ($sessionAccount !== null && !$account instanceof Account) {
-        unset($_SESSION['account'], $_SESSION['expiresAt'], $_SESSION['reviewSecret'], $_SESSION['deckDraft'], $_SESSION['reviewBlocks']);
+    if ($cookie === null && isset($legacyAccount['passwordVersion']) && time() < $legacyExpiry) {
+        $credentials = new Credentials($config['data_dir']);
+        $account = $credentials->resume($legacyAccount['id'], $legacyAccount['passwordVersion']);
+        if ($account instanceof Account) {
+            $loginToken = $credentials->createLogin($account, $legacyExpiry);
+            $setLoginCookie($loginToken, $legacyExpiry);
+        }
+    }
+    unset($_SESSION['account'], $_SESSION['expiresAt']);
+    if ($previousOwner !== $account?->id) {
+        $_SESSION = ['csrf' => bin2hex(random_bytes(32))];
+        $csrf = $_SESSION['csrf'];
+        $flash = '';
         session_regenerate_id(delete_old_session: true);
+    }
+    if ($account instanceof Account) {
+        $_SESSION['owner'] = $account->id;
+        $_SESSION['reviewSecret'] ??= bin2hex(random_bytes(32));
     }
     $request = ['owner' => $account->id ?? '', 'deck' => $deckId];
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -133,12 +179,10 @@ try {
             if (!$authenticated instanceof Account) {
                 throw new AppException('E-Mail-Adresse oder Passwort stimmt nicht.', 401);
             }
+            $expiresAt = time() + LOGIN_LIFETIME;
+            $setLoginCookie($credentials->createLogin($authenticated, $expiresAt), $expiresAt);
             session_regenerate_id(delete_old_session: true);
-            $_SESSION = [
-                'account' => $authenticated->sessionData(),
-                'expiresAt' => time() + SESSION_LIFETIME,
-                'reviewSecret' => bin2hex(random_bytes(32)),
-            ];
+            $_SESSION = ['owner' => $authenticated->id];
             go();
         }
         if (!$account instanceof Account) {
@@ -146,9 +190,8 @@ try {
         }
 
         if ($verb === 'logout') {
-            $_SESSION = [];
-            session_regenerate_id(delete_old_session: true);
-            go();
+            $credentials->forgetLogin($loginToken);
+            $endBrowserLogin();
         }
 
         if ($verb === 'save-profile') {
@@ -158,8 +201,12 @@ try {
                 throw new AppException('Das aktuelle Passwort stimmt nicht.', 403);
             }
             $updated = $credentials->updateAccount($account->id, input($_POST, key: 'email', maximum: 254), $password);
+            if ($password !== '') {
+                $expiresAt = time() + LOGIN_LIFETIME;
+                $setLoginCookie($credentials->createLogin($updated, $expiresAt), $expiresAt);
+                $credentials->forgetLogin($loginToken);
+            }
             session_regenerate_id(delete_old_session: true);
-            $_SESSION['account'] = $updated->sessionData();
             $_SESSION['flash'] = 'Profil gespeichert.';
             go('profile');
         }
@@ -174,9 +221,7 @@ try {
             if ($verb === 'delete-user') {
                 $credentials->deleteAccount($userId);
                 if ($userId === $account->id) {
-                    $_SESSION = [];
-                    session_regenerate_id(delete_old_session: true);
-                    go();
+                    $endBrowserLogin();
                 }
                 $_SESSION['flash'] = 'Benutzer gelöscht.';
                 go('users');
