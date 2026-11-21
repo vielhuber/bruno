@@ -465,10 +465,14 @@ if ($view === 'create' && !isset($_POST['type'])) {
                             <p class="muted small"><?= $mediaState === 'unknown' ? 'Auftragsstatus unklar. Kein neuer Auftrag.' : 'In Bearbeitung.' ?></p>
                         <?php endif; ?>
                         <?php if ($lesson[$kind] === '' && in_array($mediaState, ['', 'failed'], strict: true) && $settings['fal'] && $lesson['text'] !== ''): ?>
+                            <?php
+                            $estimate = $lesson['estimatedMediaCosts'][$kind];
+                            $price = $estimate < 0.01 ? 'unter 0,01' : 'ca. ' . number_format($estimate, decimals: 2, decimal_separator: ',');
+                            ?>
                             <?php if ($mediaState === 'failed'): ?><p class="muted small">Generierung fehlgeschlagen.</p><?php endif; ?>
                             <form method="post" action="<?= $route('lesson', $deckId) ?>">
                                 <?php $hidden(verb: 'queue', fields: ['deck' => $deckId, 'kind' => $kind]); ?>
-                                <button class="button secondary" type="submit"><?= $name ?> generieren (kostenpflichtig)</button>
+                                <button class="button secondary" type="submit"><?= $name ?> generieren (<?= $price ?>&nbsp;US-$)</button>
                             </form>
                         <?php endif; ?>
                         <?php if ($lesson[$kind] === '' && $mediaState === '' && (!$settings['fal'] || $lesson['text'] === '')): ?>

@@ -15,6 +15,9 @@ ENDPOINTS = {
     'audio': 'fal-ai/elevenlabs/tts/turbo-v2.5',
     'video': 'fal-ai/wan/v2.2-a14b/text-to-video/turbo',
 }
+AUDIO_USD_PER_CHARACTER = 0.05 / 1000
+VIDEO_RESOLUTION = '480p'
+VIDEO_USD_PER_CLIP = 0.05
 PENDING = {'queued', 'submitting', 'working'}
 SUBMISSION_TIMEOUT = 180
 
@@ -177,7 +180,7 @@ def run_jobs(directory, ai_key, fal_key):
                         payload = {'text': prompt, 'language_code': 'de', 'enable_safety_checker': True}
                     else:
                         payload = {'prompt': 'Kurze, freundliche, stumme Lern-Animation, kein eingeblendeter Text: '
-                                             + prompt[:600], 'resolution': '480p', 'enable_safety_checker': True,
+                                             + prompt[:600], 'resolution': VIDEO_RESOLUTION, 'enable_safety_checker': True,
                                    'enable_output_safety_checker': True}
                     response = json.loads(fetch('https://queue.fal.run/' + ENDPOINTS[kind], headers, payload))
                     update = job | {

@@ -13,7 +13,7 @@ from collection_store import (
     Rejected, answer_card, collection, deck_list, generate, lesson, media_path,
     metadata, owned_deck, queue_lesson, retry_image, save_deck, study, writable_deck,
 )
-from media_jobs import run_jobs
+from media_jobs import AUDIO_USD_PER_CHARACTER, VIDEO_USD_PER_CLIP, run_jobs
 
 
 def backup(col, directory, manual=False):
@@ -101,7 +101,12 @@ def dispatch(directory, request):
         if action == 'answer':
             return answer_card(col, deck, request)
         if action == 'lesson':
-            return lesson(col, deck)
+            material = lesson(col, deck)
+            material['estimatedMediaCosts'] = {
+                'audio': len(material['text']) * AUDIO_USD_PER_CHARACTER,
+                'video': VIDEO_USD_PER_CLIP,
+            }
+            return material
         if action == 'queue':
             return queue_lesson(col, deck, request['kind'])
         if action == 'retry-image':
