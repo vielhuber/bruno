@@ -10,7 +10,7 @@ from anki.collection import SyncOutput
 from anki.sync_pb2 import SyncAuth
 
 from collection_store import (
-    Rejected, answer_card, collection, deck_list, generate, lesson, media_path,
+    Rejected, answer_card, card_content, collection, deck_list, generate, image_progress, lesson, media_path,
     metadata, owned_deck, queue_video, retry_image, save_deck, study, writable_deck,
 )
 from media_jobs import VIDEO_ENDPOINT, VIDEO_USD_PER_CLIP, run_jobs
@@ -103,7 +103,18 @@ def dispatch(directory, request):
         if action == 'lesson':
             material = lesson(col, deck)
             material['estimatedVideoCost'] = VIDEO_USD_PER_CLIP
+            material['imageProgress'] = image_progress(col, deck)
             return material
+        if action == 'media-status':
+            if not (card_id := request['card']):
+                return {
+                    'state': metadata(deck).get('jobs', {}).get('video', {}).get('state', ''),
+                    'images': image_progress(col, deck),
+                }
+            if col.db.scalar('select did from cards where id = ?', card_id) != deck['id']:
+                raise Rejected('Karte nicht gefunden.', 404)
+            card = card_content(col.get_card(card_id))
+            return {'state': card['imageState'], 'file': card['image']}
         if action == 'queue-video':
             return queue_video(col, deck, VIDEO_ENDPOINT)
         if action == 'retry-image':

@@ -226,6 +226,68 @@ class Study {
   }
 }
 
+class MediaStatus {
+  static SELECTOR = "[data-media-status]";
+  static CHECK_INTERVAL = 5000;
+
+  constructor($root) {
+    this.$root = $root;
+  }
+
+  ready() {
+    let $stage = this.$root.querySelector("[data-media-stage]");
+    let $progress = this.$root.querySelector("[data-image-progress]");
+    let $image = this.$root.querySelector("[data-mnemonic-image]");
+    let $retry = this.$root.querySelector("[data-media-retry]");
+    let check = async () => {
+      if (!document.hidden) {
+        try {
+          let response = await fetch(this.$root.dataset.mediaStatus, {
+            cache: "no-store",
+          });
+          if ([401, 403, 404].includes(response.status)) {
+            return;
+          }
+          if (response.ok) {
+            let result = await response.json();
+            if (
+              this.$root.hasAttribute("data-watch-video") &&
+              !result.pending
+            ) {
+              window.location.reload();
+              return;
+            }
+            if ($stage && $stage.textContent !== result.label) {
+              $stage.textContent = result.label;
+            }
+            if ($progress) {
+              let progress = `${result.images.ready} von ${result.images.total} fertig.`;
+              if ($progress.textContent !== progress) {
+                $progress.textContent = progress;
+              }
+            }
+            if ($image && result.url) {
+              $image.src = result.url;
+              $image.hidden = false;
+              $stage.parentElement.hidden = true;
+            }
+            if ($retry) {
+              $retry.hidden = result.state !== "failed";
+            }
+            if (!result.pending && !result.images?.pending) {
+              return;
+            }
+          }
+        } catch {
+          // A temporarily busy collection should not interrupt a review.
+        }
+      }
+      window.setTimeout(check, MediaStatus.CHECK_INTERVAL);
+    };
+    window.setTimeout(check, MediaStatus.CHECK_INTERVAL);
+  }
+}
+
 class Editor {
   static SELECTOR = "[data-editor]";
 
@@ -266,7 +328,7 @@ $syncForm?.addEventListener("submit", () => {
   $submit.textContent = "Synchronisierung läuft …";
 });
 
-for (let Module of [Study, Editor]) {
+for (let Module of [Study, Editor, MediaStatus]) {
   for (let $element of document.querySelectorAll(Module.SELECTOR)) {
     new Module($element).ready();
   }

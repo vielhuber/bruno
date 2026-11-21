@@ -63,7 +63,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <link rel="apple-touch-icon" href="/assets/icon-192.png?v=4">
     <link rel="manifest" href="/manifest.webmanifest?v=4">
     <link rel="stylesheet" href="/assets/app.css?v=12">
-    <script defer src="/assets/app.js?v=13"></script>
+    <script defer src="/assets/app.js?v=14"></script>
 </head>
 <body class="<?= $account === null ? 'guest' : 'signed-in' ?>">
 <?php if ($account === null): ?>
@@ -446,6 +446,8 @@ if ($view === 'create' && !isset($_POST['type'])) {
                 <?php
                 $lesson = $data['lesson'];
                     $videoState = $lesson['jobs']['video'] ?? '';
+                    $videoPending = in_array($videoState, PENDING_MEDIA_STATES, strict: true);
+                    $imageProgress = $lesson['imageProgress'];
                     $canGenerateVideo = in_array($videoState, ['', 'failed', 'ready'], strict: true)
                         && $settings['fal'] && $lesson['text'] !== '';
                     ?>
@@ -453,7 +455,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                 <header class="screen-header">
                     <div><p class="eyebrow">Lernen</p><h1><?= escape($lesson['name']) ?></h1></div>
                 </header>
-                <article class="panel lesson">
+                <article class="panel lesson" <?= $videoPending || $imageProgress['pending'] > 0 ? 'data-media-status="' . $route('media-status', $deckId) . '"' : '' ?> <?= $videoPending ? 'data-watch-video' : '' ?>>
                     <h2>Lerntext</h2>
                     <p class="preline"><?= escape($lesson['text'] ?: 'Kein Lerntext vorhanden.') ?></p>
                     <?php if ($lesson['audio'] !== ''): ?>
@@ -467,11 +469,8 @@ if ($view === 'create' && !isset($_POST['type'])) {
                         <?php if ($lesson['video'] !== ''): ?>
                             <video controls preload="metadata" playsinline src="<?= $mediaUrl($deckId, $lesson['video']) ?>"></video>
                         <?php endif; ?>
-                        <?php if ($videoState === 'failed'): ?>
-                            <p class="muted small">Generierung fehlgeschlagen.</p>
-                        <?php endif; ?>
-                        <?php if (in_array($videoState, ['queued', 'submitting', 'working', 'unknown'], strict: true)): ?>
-                            <p class="muted small"><?= $videoState === 'unknown' ? 'Auftragsstatus unklar. Kein neuer Auftrag.' : 'In Bearbeitung.' ?></p>
+                        <?php if (isset(MEDIA_STAGE_LABELS[$videoState])): ?>
+                            <p class="muted small" role="status" data-media-stage><?= MEDIA_STAGE_LABELS[$videoState] ?></p>
                         <?php endif; ?>
                         <?php if ($canGenerateVideo): ?>
                             <?php
@@ -487,6 +486,12 @@ if ($view === 'create' && !isset($_POST['type'])) {
                             <p class="muted small">Noch nicht verfügbar.</p>
                         <?php endif; ?>
                     </section>
+                    <?php if ($imageProgress['total'] > 0): ?>
+                        <section class="lesson-media">
+                            <h3>Merkbilder</h3>
+                            <p class="muted small" role="status" data-image-progress><?= $imageProgress['ready'] ?> von <?= $imageProgress['total'] ?> fertig.</p>
+                        </section>
+                    <?php endif; ?>
                     <?php if ($lesson['sources']): ?>
                         <section class="lesson-media"><h3>Lernvorlagen</h3>
                             <ul>
@@ -526,6 +531,8 @@ if ($view === 'create' && !isset($_POST['type'])) {
                     $signature = hash_hmac('sha256', implode(':', [...$cardFields, $shown]), $_SESSION['reviewSecret']);
                     $reviewFields = $cardFields + ['shown' => $shown, 'signature' => $signature];
                     $canGrade = $settings['ai'] && $card['question'] !== '' && $card['answer'] !== '';
+                    $imageState = $card['imageState'];
+                    $imagePending = in_array($imageState, PENDING_MEDIA_STATES, strict: true);
                     ?>
                     <div data-study>
                         <article class="panel flashcard">
@@ -556,16 +563,16 @@ if ($view === 'create' && !isset($_POST['type'])) {
                                     <div class="card-media"><?php $cardMedia($card['answerMedia'], $deckId, $card['id']); ?></div>
                                 <?php endif; ?>
                                 <?php if ($card['hint'] !== ''): ?>
-                                    <div class="mnemonic">
-                                        <?php if ($card['image'] !== ''): ?>
-                                            <img src="<?= $mediaUrl($deckId, $card['image'], $card['id']) ?>" alt="Illustration zur Eselsbrücke" loading="lazy">
+                                    <div class="mnemonic" <?= $imagePending ? 'data-media-status="' . $route('media-status', $deckId, ['card' => $card['id']]) . '"' : '' ?>>
+                                        <?php if ($card['image'] !== '' || $imagePending): ?>
+                                            <img <?= $card['image'] !== '' ? 'src="' . $mediaUrl($deckId, $card['image'], $card['id']) . '"' : 'hidden' ?> alt="Illustration zur Eselsbrücke" loading="lazy" data-mnemonic-image>
                                         <?php endif; ?>
                                         <div><h3>Eselsbrücke</h3><p><?= escape($card['hint']) ?></p>
-                                        <?php if ($card['image'] === '' && $card['imageState'] !== ''): ?>
-                                            <p class="small muted"><?= in_array($card['imageState'], ['failed', 'unknown'], strict: true) ? 'Merkbild nicht verfügbar.' : 'Merkbild in Arbeit.' ?></p>
+                                        <?php if ($card['image'] === '' && isset(MEDIA_STAGE_LABELS[$imageState])): ?>
+                                            <p class="small muted" role="status">Merkbild: <span data-media-stage><?= MEDIA_STAGE_LABELS[$imageState] ?></span></p>
                                         <?php endif; ?>
-                                        <?php if ($card['imageState'] === 'failed' && $settings['ai']): ?>
-                                            <form method="post" action="<?= $route('study', $deckId) ?>">
+                                        <?php if ($settings['ai'] && ($imageState === 'failed' || $imagePending)): ?>
+                                            <form method="post" action="<?= $route('study', $deckId) ?>" data-media-retry <?= $imageState === 'failed' ? '' : 'hidden' ?>>
                                                 <?php $hidden(verb: 'retry-image', fields: $cardFields); ?>
                                                 <button class="button secondary" type="submit">Bild erneut generieren</button>
                                             </form>

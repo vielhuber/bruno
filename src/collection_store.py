@@ -334,6 +334,23 @@ def generate(col, owner, request):
     return {'id': deck_id, 'added': len(items)}
 
 
+def image_progress(col, deck):
+    progress = {'total': 0, 'ready': 0, 'pending': 0}
+    if metadata(deck).get('vocabulary') is not True:
+        return progress
+    for note_id in col.find_notes(f'did:{deck["id"]} tag:bruno_vocab'):
+        fields = col.get_note(note_id).fields
+        if len(fields) != 2:
+            continue
+        _, meta = unpack(fields[1])
+        if not meta.get('hint'):
+            continue
+        progress['total'] += 1
+        progress['ready'] += bool(meta.get('image'))
+        progress['pending'] += meta.get('imageJob', {}).get('state') in {'queued', 'submitting', 'working'}
+    return progress
+
+
 def lesson(col, deck):
     meta = metadata(deck)
     text = meta.get('lesson') or clean(deck.get('desc', ''))

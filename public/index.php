@@ -11,6 +11,14 @@ require __DIR__ . '/../src/bootstrap.php';
 const REVIEW_BLOCK_SIZE = 4;
 const REVIEW_CYCLE_BLOCKS = 3;
 const REVIEW_RATINGS = [1 => 'Nochmal', 2 => 'Schwer', 3 => 'Gut', 4 => 'Einfach'];
+const PENDING_MEDIA_STATES = ['queued', 'submitting', 'working'];
+const MEDIA_STAGE_LABELS = [
+    'queued' => 'Wartet auf Start.',
+    'submitting' => 'Wird erstellt …',
+    'working' => 'In Bearbeitung …',
+    'failed' => 'Generierung fehlgeschlagen.',
+    'unknown' => 'Auftragsstatus unklar. Kein neuer Auftrag.',
+];
 const LOGIN_COOKIE = '__Host-bruno-login';
 const LOGIN_LIFETIME = 30 * 24 * 60 * 60;
 
@@ -47,7 +55,6 @@ $account = null;
 $credentials = null;
 $csrf = $_SESSION['csrf'];
 $flash = $_SESSION['flash'] ?? '';
-unset($_SESSION['flash']);
 $verb = '';
 $view = 'home';
 $deckId = 0;
@@ -139,6 +146,9 @@ function study(AnkiBridge $anki, array $request): array
 try {
     $verb = input($_POST, key: 'verb');
     $view = input($_GET, key: 'view') ?: 'home';
+    if ($view !== 'media-status') {
+        unset($_SESSION['flash']);
+    }
     $deckId = (int) input($_POST + $_GET, key: 'deck');
     $cookie = $_COOKIE[LOGIN_COOKIE] ?? null;
     $loginToken = is_string($cookie) ? $cookie : '';
@@ -172,6 +182,21 @@ try {
         $_SESSION['reviewSecret'] ??= bin2hex(random_bytes(32));
     }
     $request = ['owner' => $account->id ?? '', 'deck' => $deckId];
+    if ($view === 'media-status' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+        if (!$account instanceof Account) {
+            throw new AppException('Bitte erneut anmelden.', 401);
+        }
+        $cardId = (int) input($_GET, key: 'card');
+        session_write_close();
+        $status = $anki->call('media-status', $request + ['card' => $cardId]);
+        if (($status['file'] ?? '') !== '') {
+            $status['url'] = '/?' . http_build_query(['view' => 'media', 'deck' => $deckId, 'card' => $cardId, 'file' => $status['file']]);
+        }
+        respond($status + [
+            'pending' => in_array($status['state'], PENDING_MEDIA_STATES, strict: true),
+            'label' => MEDIA_STAGE_LABELS[$status['state']] ?? '',
+        ]);
+    }
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($_POST === [] && (int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > 8 * 1024 * 1024) {
             throw new AppException('Die Anfrage ist zu groß. Vorlagen dürfen zusammen höchstens 8 MB groß sein.', 413);
@@ -551,7 +576,7 @@ try {
 } catch (AppException | PDOException $error) {
     $errorMessage = $error instanceof AppException ? $error->getMessage() : 'Die Anmeldung ist momentan nicht verfügbar.';
     http_response_code($error instanceof AppException ? ($error->getCode() ?: 400) : 503);
-    if (in_array($verb, ['grade', 'grade-answer'], strict: true)) {
+    if (in_array($verb, ['grade', 'grade-answer'], strict: true) || $view === 'media-status') {
         respond(['error' => $errorMessage]);
     }
     if ($view === 'media') {
