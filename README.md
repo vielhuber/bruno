@@ -25,6 +25,8 @@ Beim Erstellen sind 1 bis 250 Karten wählbar (Standard: 10). Die KI liest bis z
 
 Ein separates Login-Cookie hält die Anmeldung 30 Tage lang ab dem Login, auch nach einem Deployment. Alle angemeldeten Konten können unter „Benutzer“ Konten verwalten und Passwörter zurücksetzen. Das eigene Profil ist über die E-Mail-Adresse im Menü erreichbar. Beim Löschen bleiben Anki-Stapel erhalten. Das letzte Konto lässt sich nicht löschen.
 
+Für jede freigegebene Vokabelkarte erzeugt `ai.rebuhleiv.xyz` ein Merkbild. Es erscheint mit dem kurzen Merksatz auf der Rückseite der Karte, auch in Anki.
+
 ## Anki
 
 Eine gemeinsame AnkiWeb-Sammlung, ein bruno-Konto je Stapel. Zum ersten Download mit einer leeren lokalen Sammlung starten:

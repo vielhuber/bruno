@@ -237,10 +237,10 @@ def note_back(back, meta):
     markup = ''
     if meta.get('hint'):
         hint = html.escape(meta['hint'])
-        markup = f'<br><details><summary>Eselsbrücke</summary>{hint}'
+        markup = f'<div><strong>Eselsbrücke:</strong> {hint}'
         if meta.get('image'):
-            markup += f'<br><img src="{html.escape(meta["image"], quote=True)}" alt="">'
-        markup += '</details>'
+            markup += f'<br><img src="{html.escape(meta["image"], quote=True)}" alt="Illustration zur Eselsbrücke">'
+        markup += '</div>'
     return pack(back, meta) + markup
 
 

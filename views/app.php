@@ -550,7 +550,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                                         <?php if ($card['imageState'] === 'failed' && $settings['ai']): ?>
                                             <form method="post" action="<?= $route('study', $deckId) ?>">
                                                 <?php $hidden(verb: 'retry-image', fields: $cardFields); ?>
-                                                <button class="button secondary" type="submit">Bild erneut beauftragen (kostenpflichtig)</button>
+                                                <button class="button secondary" type="submit">Bild erneut generieren</button>
                                             </form>
                                         <?php endif; ?>
                                         </div>

@@ -11,6 +11,7 @@ final class Gateway
     public const DEFAULT_CARD_COUNT = 10;
     public const MAX_CARD_COUNT = 250;
     public const CARD_BATCH_SIZE = 25;
+    private const HINT_MAX_CHARACTERS = 120;
     private const VOICE_MODEL = 'gemini-3.5-flash-lite';
 
     /**
@@ -42,8 +43,9 @@ final class Gateway
             'vocabulary' => 'Erstelle Vokabelkarten: front ist immer Deutsch, back immer die angegebene Fremdsprache. '
                 . 'Sortiere fremdsprachig beginnende Vorlagen (etwa lateinische Wortlisten) in diese Richtung um. '
                 . 'Nur eine Karte je Vokabelpaar; keine Karte in Gegenrichtung erstellen. '
-                . 'Für jede Karte zusätzlich hint (eine merkbare Eselsbrücke auf Deutsch) und imagePrompt '
-                . '(kurze harmlose visuelle Szene zur Eselsbrücke, keine Personenreferenzen, keine Schrift im Bild). '
+                . 'Gib für jede Karte hint als einen kurzen deutschen Merksatz mit einer konkreten Klang- oder Bildassoziation aus. '
+                . 'Höchstens zwölf Wörter und ' . self::HINT_MAX_CHARACTERS . ' Zeichen, ohne zusätzliche Erklärung. '
+                . 'imagePrompt beschreibt genau diese Eselsbrücke als einfache Bildszene, ohne Personenreferenzen oder Schrift. '
                 . 'Aus Vorlagen nur klar belegte Vokabeln extrahieren. Ohne Vorlage ist die Fremdsprache im Thema angegeben.',
             'test' => 'Leite aus den erkennbaren fachlichen Fehlern in den Vorlagen neue Übungsfragen ab. '
                 . 'Wenn keine Fehler klar erkennbar sind, prüfe den Stoff mit neuen Fragen.',
@@ -74,7 +76,7 @@ final class Gateway
             }
             $item = ['front' => input($card, key: 'front', maximum: 500), 'back' => input($card, key: 'back', maximum: 1500)];
             if ($type === 'vocabulary') {
-                $item['hint'] = input($card, key: 'hint', maximum: 700);
+                $item['hint'] = input($card, key: 'hint', maximum: self::HINT_MAX_CHARACTERS);
                 $item['imagePrompt'] = input($card, key: 'imagePrompt', maximum: 700);
             }
             $pair = mb_strtolower($item['front'] . ' → ' . $item['back']);
