@@ -154,7 +154,8 @@ def run_jobs(directory, ai_key, fal_key):
                 continue
             expected = job
             if state == 'queued':
-                expected = job | {'state': 'submitting', 'started': time.time()}
+                # Anki may round fractional timestamps when saving deck metadata.
+                expected = job | {'state': 'submitting', 'started': int(time.time())}
             with collection(directory) as col:
                 claimed = change_job(col, deck_id, note_id, kind, job, expected if state == 'queued' else None)
             if not claimed:
