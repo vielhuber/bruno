@@ -63,7 +63,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <link rel="apple-touch-icon" href="/assets/icon-192.png?v=4">
     <link rel="manifest" href="/manifest.webmanifest?v=4">
     <link rel="stylesheet" href="/assets/app.css?v=10">
-    <script defer src="/assets/app.js?v=11"></script>
+    <script defer src="/assets/app.js?v=12"></script>
 </head>
 <body class="<?= $account === null ? 'guest' : 'signed-in' ?>">
 <?php if ($account === null): ?>
@@ -363,6 +363,9 @@ if ($view === 'create' && !isset($_POST['type'])) {
                             <option value="test" <?= $selectedType === 'test' ? 'selected' : '' ?>>Schülertest</option>
                         </select>
                     </label>
+                    <label>Anzahl der Karten
+                        <input name="card_count" type="number" min="1" max="<?= Gateway::MAX_CARD_COUNT ?>" step="1" required value="<?= escape(isset($_POST['card_count']) ? input($_POST, key: 'card_count') : (string) Gateway::DEFAULT_CARD_COUNT) ?>">
+                    </label>
                     <label>Thema oder Schwerpunkt
                         <textarea name="focus" rows="3" maxlength="2000" placeholder="Englisch · Reisen · A1"><?= escape(input($_POST, key: 'focus')) ?></textarea>
                     </label>
@@ -377,16 +380,23 @@ if ($view === 'create' && !isset($_POST['type'])) {
                 $draft = $data['draft'];
                     $proposal = $draft['payload'];
                     $approved = $draft['approved'];
+                    $generating = $draft['generating'];
+                    $cardCount = count($proposal['cards']);
                     $saveLabel = $proposal['deck'] ? 'Karten hinzufügen' : 'Stapel anlegen';
+                    $heading = match (true) {
+                        $generating => 'Kartenvorschau wird erstellt',
+                        $approved => $saveLabel,
+                        default => 'Karten prüfen',
+                    };
                     ?>
                 <header class="screen-header">
                     <div>
                         <p class="eyebrow">Schritt <?= $approved ? 3 : 2 ?> von 3</p>
-                        <h1><?= $approved ? $saveLabel : 'Karten prüfen' ?></h1>
-                        <p class="muted"><?= escape($proposal['title']) ?> · <?= count($proposal['cards']) ?> Kartenvorschläge</p>
+                        <h1><?= $heading ?></h1>
+                        <p class="muted"><?= escape($proposal['title']) ?> · <?= $cardCount ?> von <?= $draft['cardCount'] ?> Karten</p>
                     </div>
                 </header>
-                <?php if (!$approved): ?>
+                <?php if (!$approved && !$generating): ?>
                     <div class="deck-grid">
                         <section class="panel form-grid">
                             <h2>Lerntext</h2>
@@ -409,10 +419,18 @@ if ($view === 'create' && !isset($_POST['type'])) {
                     <p class="panel">Die Karten sind freigegeben, aber noch nicht in Anki gespeichert.</p>
                 <?php endif; ?>
                 <div class="inline-actions page-actions">
-                    <form method="post" action="<?= $route('preview') ?>">
-                        <?php $hidden(verb: $approved ? 'save-draft' : 'approve-draft', fields: ['draft' => $draft['id']]); ?>
-                        <button type="submit" class="button primary"><?= $approved ? $saveLabel : 'Karten freigeben' ?></button>
-                    </form>
+                    <?php if ($generating): ?>
+                        <form method="post" action="<?= $route('preview') ?>" <?= $errorMessage === '' ? 'data-generate-batch' : '' ?>>
+                            <?php $hidden(verb: 'generate-batch', fields: ['draft' => $draft['id'], 'offset' => $cardCount]); ?>
+                            <button type="submit" class="button primary">Vorschau fortsetzen</button>
+                        </form>
+                    <?php endif; ?>
+                    <?php if (!$generating): ?>
+                        <form method="post" action="<?= $route('preview') ?>">
+                            <?php $hidden(verb: $approved ? 'save-draft' : 'approve-draft', fields: ['draft' => $draft['id']]); ?>
+                            <button type="submit" class="button primary"><?= $approved ? $saveLabel : 'Karten freigeben' ?></button>
+                        </form>
+                    <?php endif; ?>
                     <form method="post" action="<?= $route('preview') ?>">
                         <?php $hidden(verb: 'discard-draft', fields: ['draft' => $draft['id']]); ?>
                         <button type="submit" class="button secondary">Entwurf verwerfen</button>

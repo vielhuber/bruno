@@ -254,6 +254,8 @@ for (let Module of [Study, Editor]) {
   }
 }
 
+document.querySelector("[data-generate-batch]")?.requestSubmit();
+
 let installPrompt;
 window.addEventListener("beforeinstallprompt", (event) => {
   event.preventDefault();

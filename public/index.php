@@ -217,6 +217,12 @@ try {
         }
 
         if ($verb === 'generate') {
+            $cardCount = filter_var($_POST['card_count'] ?? Gateway::DEFAULT_CARD_COUNT, FILTER_VALIDATE_INT, [
+                'options' => ['min_range' => 1, 'max_range' => Gateway::MAX_CARD_COUNT],
+            ]);
+            if ($cardCount === false) {
+                throw new AppException('Bitte eine Kartenanzahl zwischen 1 und ' . Gateway::MAX_CARD_COUNT . ' eingeben.', 422);
+            }
             $owned = $deckId ? $anki->call('lesson', $request) : null;
             $title = $owned['name'] ?? input($_POST, key: 'title', maximum: 100);
             $focus = input($_POST, key: 'focus', maximum: 2000);
@@ -242,28 +248,37 @@ try {
             if ($type === 'test' && !$documents) {
                 throw new AppException('Bitte einen anonymisierten Test hochladen.', 422);
             }
-            $previousLesson = $owned['text'] ?? '';
-            $content = $gateway->create($title, $focus, $type, $documents, $previousLesson);
             $sources = [];
             foreach ($documents as $document) {
                 $sources[] = [
                     'extension' => $document->extension,
+                    'mime' => $document->mime,
                     'data' => base64_encode($document->contents()),
                     'type' => $type === 'test' ? 'Test' : 'Lernvorlage',
                 ];
             }
-            $_SESSION['deckDraft'] = ['id' => bin2hex(random_bytes(16)), 'approved' => false, 'payload' => $content + [
-                'deck' => $deckId,
-                'title' => $title,
-                'focus' => $focus,
-                'vocabulary' => $type === 'vocabulary',
-                'previousLesson' => $previousLesson,
-                'documents' => $sources,
-            ]];
+            $previousLesson = $owned['text'] ?? '';
+            $_SESSION['deckDraft'] = [
+                'id' => bin2hex(random_bytes(16)),
+                'approved' => false,
+                'generating' => true,
+                'cardCount' => $cardCount,
+                'type' => $type,
+                'payload' => [
+                    'deck' => $deckId,
+                    'title' => $title,
+                    'focus' => $focus,
+                    'vocabulary' => $type === 'vocabulary',
+                    'previousLesson' => $previousLesson,
+                    'lesson' => $previousLesson,
+                    'cards' => [],
+                    'documents' => $sources,
+                ],
+            ];
             go('preview');
         }
 
-        if (in_array($verb, ['approve-draft', 'save-draft', 'discard-draft'], strict: true)) {
+        if (in_array($verb, ['generate-batch', 'approve-draft', 'save-draft', 'discard-draft'], strict: true)) {
             $draft = $_SESSION['deckDraft'] ?? null;
             if ($draft === null || !hash_equals($draft['id'], input($_POST, key: 'draft', maximum: 32))) {
                 throw new AppException('Dieser Entwurf ist nicht mehr aktuell. Bitte die aktuelle Vorschau öffnen.', 409);
@@ -271,6 +286,52 @@ try {
             if ($verb === 'discard-draft') {
                 unset($_SESSION['deckDraft']);
                 go('create', $draft['payload']['deck']);
+            }
+            if ($verb === 'generate-batch') {
+                $payload = $draft['payload'];
+                $offset = count($payload['cards']);
+                if (!$draft['generating'] || input($_POST, key: 'offset') !== (string) $offset) {
+                    go('preview');
+                }
+                $batchSize = min($draft['cardCount'] - $offset, Gateway::CARD_BATCH_SIZE);
+                $temporaryFiles = [];
+                $documents = [];
+                try {
+                    foreach ($payload['documents'] as $source) {
+                        $file = tmpfile();
+                        if ($file === false) {
+                            throw new AppException('Eine Vorlage konnte nicht vorbereitet werden.', 503);
+                        }
+                        $temporaryFiles[] = $file;
+                        $contents = base64_decode($source['data'], strict: true);
+                        if ($contents === false || fwrite($file, $contents) !== strlen($contents)) {
+                            throw new AppException('Eine Vorlage konnte nicht vorbereitet werden.', 503);
+                        }
+                        $documents[] = new Upload(stream_get_meta_data($file)['uri'], $source['mime'], $source['extension']);
+                    }
+                    $content = $gateway->create(
+                        title: $payload['title'],
+                        focus: $payload['focus'],
+                        type: $draft['type'],
+                        documents: $documents,
+                        previousLesson: $payload['lesson'],
+                        cardCount: $batchSize,
+                        previousCards: $payload['cards'],
+                    );
+                } finally {
+                    foreach ($temporaryFiles as $file) {
+                        fclose($file);
+                    }
+                }
+                $payload['lesson'] = $content['lesson'];
+                $payload['cards'] = array_merge($payload['cards'], $content['cards']);
+                $draft['payload'] = $payload;
+                $draft['generating'] = count($content['cards']) === $batchSize && count($payload['cards']) < $draft['cardCount'];
+                $_SESSION['deckDraft'] = $draft;
+                go('preview');
+            }
+            if ($draft['generating']) {
+                throw new AppException('Bitte warten, bis die Vorschau fertig ist.', 409);
             }
             if ($verb === 'approve-draft') {
                 $_SESSION['deckDraft']['approved'] = true;
