@@ -10,17 +10,31 @@ require __DIR__ . '/../src/bootstrap.php';
 
 const REVIEW_BLOCK_SIZE = 4;
 const REVIEW_CYCLE_BLOCKS = 3;
+const SESSION_LIFETIME = 30 * 24 * 60 * 60;
 
 header('Cache-Control: no-store');
 header("Content-Security-Policy: default-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
 header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: no-referrer');
-session_start([
+$sessionDirectory = $config['data_dir'] . '/sessions';
+$sessionDirectoryReady = is_dir($sessionDirectory)
+    || mkdir($sessionDirectory, permissions: 0o700, recursive: true)
+    || is_dir($sessionDirectory);
+if (!$sessionDirectoryReady || !session_start([
+    'save_handler' => 'files',
+    'save_path' => $sessionDirectory,
+    'gc_probability' => 1,
+    'gc_divisor' => 100,
+    'gc_maxlifetime' => SESSION_LIFETIME,
     'use_strict_mode' => 1,
+    'cookie_lifetime' => SESSION_LIFETIME,
     'cookie_httponly' => true,
     'cookie_secure' => true,
     'cookie_samesite' => 'Lax',
-]);
+])) {
+    http_response_code(503);
+    exit('Die Anmeldung ist momentan nicht verfügbar.');
+}
 $_SESSION['csrf'] ??= bin2hex(random_bytes(32));
 
 $anki = new AnkiBridge($config['python'], $config['data_dir']);
@@ -90,12 +104,12 @@ try {
     $view = input($_GET, key: 'view') ?: 'home';
     $deckId = (int) input($_POST + $_GET, key: 'deck');
     $sessionAccount = $_SESSION['account'] ?? null;
-    if (isset($sessionAccount['passwordVersion'])) {
+    if (isset($sessionAccount['passwordVersion']) && time() < ($_SESSION['expiresAt'] ?? 0)) {
         $credentials = new Credentials($config['data_dir']);
         $account = $credentials->resume($sessionAccount['id'], $sessionAccount['passwordVersion']);
     }
     if ($sessionAccount !== null && !$account instanceof Account) {
-        unset($_SESSION['account'], $_SESSION['reviewSecret'], $_SESSION['deckDraft'], $_SESSION['reviewBlocks']);
+        unset($_SESSION['account'], $_SESSION['expiresAt'], $_SESSION['reviewSecret'], $_SESSION['deckDraft'], $_SESSION['reviewBlocks']);
         session_regenerate_id(delete_old_session: true);
     }
     $request = ['owner' => $account->id ?? '', 'deck' => $deckId];
@@ -120,7 +134,11 @@ try {
                 throw new AppException('E-Mail-Adresse oder Passwort stimmt nicht.', 401);
             }
             session_regenerate_id(delete_old_session: true);
-            $_SESSION = ['account' => $authenticated->sessionData(), 'reviewSecret' => bin2hex(random_bytes(32))];
+            $_SESSION = [
+                'account' => $authenticated->sessionData(),
+                'expiresAt' => time() + SESSION_LIFETIME,
+                'reviewSecret' => bin2hex(random_bytes(32)),
+            ];
             go();
         }
         if (!$account instanceof Account) {
