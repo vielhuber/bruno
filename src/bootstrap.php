@@ -15,6 +15,7 @@ require_once __DIR__ . '/Account.php';
 require_once __DIR__ . '/Credentials.php';
 require_once __DIR__ . '/Upload.php';
 require_once __DIR__ . '/GatewayGemini.php';
+require_once __DIR__ . '/GatewayCodex.php';
 require_once __DIR__ . '/Gateway.php';
 
 umask(0o077);

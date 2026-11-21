@@ -11,6 +11,7 @@ final class Gateway
     public const DEFAULT_CARD_COUNT = 10;
     public const MAX_CARD_COUNT = 250;
     public const CARD_BATCH_SIZE = 25;
+    private const VOICE_MODEL = 'gemini-3.5-flash-lite';
 
     /**
      * Accept a configured multimodal model ID without letting clients change the destination.
@@ -127,11 +128,15 @@ final class Gateway
      */
     private function ask(string $system, string $prompt, array $attachments): array
     {
-        if ($this->key === '' || !preg_match('/^gemini-[a-zA-Z0-9_.-]+$/D', $this->model)) {
+        if ($this->key === '' || !preg_match('/^(?:gpt|gemini)-[a-zA-Z0-9_.-]+$/D', $this->model)) {
             throw new AppException('Der KI-Zugang ist noch nicht eingerichtet.', 503);
         }
+        $model = $this->model;
         $paths = [];
         foreach ($attachments as $index => $attachment) {
+            if ($attachment->mime === 'audio/wav' && str_starts_with($model, 'gpt-')) {
+                $model = self::VOICE_MODEL;
+            }
             if ($attachment->mime !== 'text/plain') {
                 $paths[] = $attachment->path;
                 continue;
@@ -142,7 +147,10 @@ final class Gateway
             }
             $prompt .= "\n\nTextvorlage " . ($index + 1) . ":\n" . $text;
         }
-        $response = (new GatewayGemini($this->model, $this->key, $system))->ask(prompt: $prompt, files: $paths);
+        $gateway = str_starts_with($model, 'gemini-')
+            ? new GatewayGemini($model, $this->key, $system)
+            : new GatewayCodex($model, $this->key, $system);
+        $response = $gateway->ask(prompt: "Antwortformat: JSON.\n\n" . $prompt, files: $paths);
         if (!$response['success']) {
             throw new AppException('Der KI-Dienst konnte die Anfrage nicht abschließen. Bitte später erneut versuchen.', 502);
         }

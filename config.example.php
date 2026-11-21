@@ -6,7 +6,7 @@ return [
     'data_dir' => __DIR__ . '/data',
     'python' => __DIR__ . '/.venv/bin/python',
     'ai_key' => '',
-    'ai_model' => 'gemini-3.5-flash-lite',
+    'ai_model' => 'gpt-6.2-sol',
     'fal_key' => '',
     'cron_password_hash' => '',
 ];

@@ -19,7 +19,7 @@ unset password
 
 Fehlt auf dem Shared Host `ensurepip`, die beiden Python-Schritte durch `python3 -m venv --without-pip .venv` und `python3 -m pip --python .venv/bin/python install -r requirements.txt` ersetzen.
 
-`config.local.php`: privates Datenverzeichnis und KI-Schlüssel für `ai.rebuhleiv.xyz` (Karten und Bewertungen über aihelper, Bild-Eselsbrücken) setzen. Der fal.ai-Schlüssel ist nur für Audio und Video nötig. Web und Cron müssen als derselbe Benutzer laufen.
+`config.local.php`: privates Datenverzeichnis und KI-Schlüssel für `ai.rebuhleiv.xyz` setzen (auch für Bild-Eselsbrücken). Kartenvorschläge, Lerntexte und Textbewertungen nutzen `gpt-6.2-sol` über CLIProxyAPI und aihelper. Sprachantworten verwenden weiterhin Gemini. Der fal.ai-Schlüssel ist nur für Audio und Video nötig. Web und Cron müssen als derselbe Benutzer laufen.
 
 Beim Erstellen sind 1 bis 250 Karten wählbar (Standard: 10). Die KI liest bis zu zehn Vorlagen mit insgesamt höchstens 8 MB. Schülerunterlagen vor dem Upload anonymisieren. Man prüft und gibt die Kartenvorschläge frei, bevor man sie im letzten Schritt in Anki speichert.
 
