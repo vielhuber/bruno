@@ -152,13 +152,13 @@ img, video, audio { max-width: 100%; }
 .mnemonic img { width: min(36%, 164px); aspect-ratio: 1; object-fit: cover; border-radius: 9px; }
 .mnemonic h3 { margin-bottom: 4px; }
 .answer-form, .rating-form { max-width: 760px; margin-top: 12px; }
-.answer-form + .notice { max-width: 760px; margin: 12px 0 0; }
-.answer-form [data-record-status]:empty { display: none; }
+.flashcard [data-feedback], .flashcard [data-record-status] { margin: 12px 0; }
+.flashcard [data-record-status]:empty { display: none; }
 .rating-form h2 { font-size: 1.23rem; margin-bottom: 11px; }
 .ratings { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .ratings button { min-height: 54px; padding: 4px 2px; display: grid; place-content: center; gap: 1px; border: 1px solid var(--control); border-radius: 9px; background: var(--raised); color: var(--text); font-size: .86rem; font-weight: 720; }
 .ratings button span { font-size: .74rem; font-weight: 530; }
-.ratings button:hover, .ratings .suggested { background: var(--accent-surface); border-color: var(--accent); }
+.ratings button:hover { background: var(--accent-surface); border-color: var(--accent); }
 
 .guest { background: radial-gradient(ellipse at 50% 0%, #252139, transparent 58%), var(--paper); }
 .guest-main { min-height: 100dvh; display: grid; place-items: center; padding: 20px; }

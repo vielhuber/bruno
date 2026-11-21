@@ -7,45 +7,64 @@ class Study {
 
   ready() {
     this.$solution = this.$root.querySelector("#solution");
+    this.$actions = this.$root.querySelector("[data-answer-actions]");
     this.$reveal = this.$root.querySelector("[data-reveal]");
     this.$ratings = this.$root.querySelector("[data-ratings]");
-    this.$reveal.addEventListener("click", () => this.reveal());
-    let $form = this.$root.querySelector("[data-grade]");
-    if (!$form) {
+    this.$form = this.$root.querySelector("[data-grade]");
+    this.$feedback = this.$root.querySelector("[data-feedback]");
+    let $recordStatus = this.$root.querySelector("[data-record-status]");
+    this.$reveal.addEventListener("click", () => {
+      this.reveal();
+      this.$ratings.hidden = false;
+      if (this.$feedback) {
+        this.$feedback.hidden = true;
+        $recordStatus.textContent = "";
+      }
+    });
+    if (!this.$form) {
       return;
     }
 
-    let $answer = $form.elements.namedItem("answer");
-    let $feedback = this.$root.querySelector("[data-feedback]");
-    let $record = $form.querySelector("[data-record]");
-    let $submit = $form.querySelector('button[type="submit"]');
-    let $recordStatus = $form.querySelector("[data-record-status]");
+    this.$answer = this.$form.elements.namedItem("answer");
+    this.$textAnswer = this.$root.querySelector("[data-text-answer]");
+    this.$record = this.$root.querySelector("[data-record]");
+    this.$submit = this.$form.querySelector('button[type="submit"]');
+    this.$next = this.$root.querySelector("[data-next-card]");
     let recording;
-    let audioFile;
 
-    $answer.addEventListener("input", () => {
-      audioFile = undefined;
-      $recordStatus.textContent = "";
+    this.$textAnswer.addEventListener("click", () => {
+      this.$form.hidden = false;
+      this.$textAnswer.setAttribute("aria-expanded", "true");
+      this.$answer.focus();
     });
-    $record.disabled =
-      !navigator.mediaDevices?.getUserMedia ||
-      !window.MediaRecorder ||
-      !window.AudioContext;
-    if ($record.disabled) {
+    this.$form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      if (!this.$submit.disabled) {
+        this.grade(new FormData(this.$form));
+      }
+    });
+    this.canRecord = Boolean(
+      navigator.mediaDevices?.getUserMedia &&
+      window.MediaRecorder &&
+      window.AudioContext &&
+      window.OfflineAudioContext,
+    );
+    this.$record.disabled = !this.canRecord;
+    if (!this.canRecord) {
       $recordStatus.textContent =
         "Aufnahmen sind in diesem Browser nicht verfügbar.";
     }
 
-    $record.addEventListener("click", async () => {
+    this.$record.addEventListener("click", async () => {
       if (recording?.state === "recording") {
+        this.$record.disabled = true;
         recording.stop();
         return;
       }
       let stream;
       let context;
-      $record.disabled = true;
-      $submit.disabled = true;
-      audioFile = undefined;
+      this.setBusy(true);
+      this.$feedback.hidden = true;
       try {
         stream = await navigator.mediaDevices.getUserMedia({
           audio: { channelCount: 1 },
@@ -61,8 +80,9 @@ class Study {
           for (let track of stream.getTracks()) {
             track.stop();
           }
-          $record.textContent = "Aufnehmen";
-          $record.disabled = true;
+          this.$record.textContent = "Audioaufnahme";
+          this.$record.disabled = true;
+          let payload;
           try {
             let input = await new Blob(chunks, {
               type: recording.mimeType,
@@ -114,19 +134,22 @@ class Study {
                 true,
               );
             });
-            audioFile = new File([wav.buffer], "antwort.wav", {
+            let audioFile = new File([wav.buffer], "antwort.wav", {
               type: "audio/wav",
             });
-            $answer.value = "";
-            $recordStatus.textContent =
-              "Aufnahme bereit. Mit „Mit KI prüfen“ absenden.";
+            payload = new FormData(this.$form);
+            payload.set("answer", "");
+            payload.set("voice", audioFile);
+            $recordStatus.textContent = "";
           } catch {
             $recordStatus.textContent =
               "Die Aufnahme konnte nicht verarbeitet werden.";
+            this.setBusy(false);
           } finally {
             await context.close();
-            $record.disabled = false;
-            $submit.disabled = false;
+          }
+          if (payload) {
+            this.grade(payload);
           }
         });
         recording.start();
@@ -135,9 +158,9 @@ class Study {
             recording.stop();
           }
         }, 20000);
-        $record.textContent = "Aufnahme stoppen";
+        this.$record.textContent = "Aufnahme stoppen";
         $recordStatus.textContent = "Aufnahme läuft (maximal 20 Sekunden).";
-        $record.disabled = false;
+        this.$record.disabled = false;
       } catch {
         for (let track of stream?.getTracks() ?? []) {
           track.stop();
@@ -147,63 +170,58 @@ class Study {
         }
         $recordStatus.textContent =
           "Kein Mikrofonzugriff. Du kannst die Antwort schreiben.";
-        $record.disabled = false;
-        $submit.disabled = false;
+        this.setBusy(false);
       }
     });
+  }
 
-    $form.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      if ($submit.disabled) {
-        return;
+  setBusy(busy) {
+    this.$record.disabled = busy || !this.canRecord;
+    this.$textAnswer.disabled = busy;
+    this.$reveal.disabled = busy;
+    this.$submit.disabled = busy;
+    this.$answer.readOnly = busy;
+  }
+
+  async grade(payload) {
+    this.setBusy(true);
+    this.$feedback.hidden = false;
+    this.$feedback.classList.remove("error");
+    this.$feedback.textContent = "Die Antwort wird geprüft …";
+    try {
+      let response = await fetch(window.location.href, {
+        method: "POST",
+        body: payload,
+      });
+      let result = await response.json();
+      if (!response.ok) {
+        throw new Error(
+          result.error || "Die Antwort konnte nicht geprüft werden.",
+        );
       }
-      let payload = new FormData($form);
-      if (audioFile) {
-        payload.set("voice", audioFile);
-      }
-      $submit.disabled = true;
-      $feedback.hidden = false;
-      $feedback.classList.remove("error");
-      $feedback.textContent = "Die Antwort wird geprüft …";
-      try {
-        let response = await fetch(window.location.href, {
-          method: "POST",
-          body: payload,
-        });
-        let result = await response.json();
-        if (!response.ok) {
-          throw new Error(
-            result.error || "Die Antwort konnte nicht geprüft werden.",
-          );
-        }
-        this.reveal();
-        let transcript = result.transcript
-          ? `Erkannt: „${result.transcript}“. `
-          : "";
-        $feedback.textContent = `${transcript}${result.feedback} Du entscheidest, wie du die Karte bewertest.`;
-        this.$ratings.querySelectorAll("button").forEach(($rating) => {
-          $rating.classList.toggle(
-            "suggested",
-            Number($rating.value) === result.suggested,
-          );
-        });
-      } catch (error) {
-        $feedback.classList.add("error");
-        $feedback.textContent =
-          error instanceof SyntaxError
-            ? "Die Antwort konnte nicht geprüft werden."
-            : error.message;
-      } finally {
-        $submit.disabled = false;
-      }
-    });
+      let transcript = result.transcript
+        ? `Erkannt: „${result.transcript}“. `
+        : "";
+      this.$feedback.textContent = `Bewertung gespeichert: ${result.ratingLabel}. ${transcript}${result.feedback}`;
+      this.reveal();
+      this.$next.hidden = false;
+    } catch (error) {
+      this.$feedback.classList.add("error");
+      this.$feedback.textContent =
+        error instanceof SyntaxError
+          ? "Die Antwort konnte nicht geprüft werden."
+          : error.message;
+      this.setBusy(false);
+    }
   }
 
   reveal() {
     this.$solution.hidden = false;
     this.$reveal.setAttribute("aria-expanded", "true");
-    this.$reveal.hidden = true;
-    this.$ratings.hidden = false;
+    this.$actions.hidden = true;
+    if (this.$form) {
+      this.$form.hidden = true;
+    }
     this.$solution.focus();
   }
 }

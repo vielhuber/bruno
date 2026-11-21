@@ -10,6 +10,7 @@ require __DIR__ . '/../src/bootstrap.php';
 
 const REVIEW_BLOCK_SIZE = 4;
 const REVIEW_CYCLE_BLOCKS = 3;
+const REVIEW_RATINGS = [1 => 'Nochmal', 2 => 'Schwer', 3 => 'Gut', 4 => 'Einfach'];
 const LOGIN_COOKIE = '__Host-bruno-login';
 const LOGIN_LIFETIME = 30 * 24 * 60 * 60;
 
@@ -61,6 +62,18 @@ function go(string $view = 'home', int $deck = 0): never
 {
     $query = $view === 'home' ? '' : '?' . http_build_query(['view' => $view] + ($deck ? ['deck' => $deck] : []));
     header('Location: /' . $query, response_code: 303);
+    exit;
+}
+
+/**
+ * Return the data for an asynchronous request without rendering the page.
+ *
+ * @param array<string, mixed> $payload
+ */
+function respond(array $payload): never
+{
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode($payload, JSON_THROW_ON_ERROR);
     exit;
 }
 
@@ -411,7 +424,11 @@ try {
             go('study', $deckId);
         }
 
-        if ($verb === 'answer') {
+        if ($verb === 'grade') {
+            throw new AppException('Die Lernrunde wurde aktualisiert. Bitte die Seite neu laden.', 409);
+        }
+
+        if (in_array($verb, ['answer', 'grade-answer'], strict: true)) {
             $values = [
                 'card' => (int) input($_POST, key: 'card'),
                 'reps' => (int) input($_POST, key: 'reps'),
@@ -419,42 +436,46 @@ try {
                 'shown' => (int) input($_POST, key: 'shown'),
             ];
             $signature = hash_hmac('sha256', implode(':', [$deckId, ...$values]), $_SESSION['reviewSecret']);
-            $rating = (int) input($_POST, key: 'rating');
-            if (!hash_equals($signature, input($_POST, key: 'signature')) || !in_array($rating, [1, 2, 3, 4], strict: true)) {
+            if (!hash_equals($signature, input($_POST, key: 'signature'))) {
                 throw new AppException('Bitte die Lernrunde neu öffnen.', 422);
             }
-            $anki->call('answer', $request + $values + ['rating' => $rating, 'elapsed' => time() - $values['shown']]);
+            $elapsed = time() - $values['shown'];
+            $feedback = null;
+            $rating = (int) input($_POST, key: 'rating');
+            if ($verb === 'grade-answer') {
+                $presentation = study($anki, $request);
+                $card = $presentation['card'];
+                if (
+                    !$card || $card['id'] !== $values['card'] || $card['reps'] !== $values['reps'] || $card['modified'] !== $values['modified']
+                    || (int) $presentation['reversed'] !== (int) input($_POST, key: 'reversed')
+                ) {
+                    throw new AppException('Diese Karte ist nicht mehr aktuell. Bitte die Lernrunde neu öffnen.', 409);
+                }
+                if ($card['question'] === '' || $card['answer'] === '') {
+                    throw new AppException('Bei dieser Karte kannst du deine Antwort nur selbst bewerten.', 422);
+                }
+                $answer = input($_POST, key: 'answer', maximum: 1500);
+                $voice = uploads('voice', ['audio/wav' => 'wav'], limit: 900_000)[0] ?? null;
+                if (($answer !== '') === ($voice !== null)) {
+                    throw new AppException('Bitte entweder eine Antwort schreiben oder aufnehmen.', 422);
+                }
+                $feedback = $gateway->grade($card['question'], $card['answer'], $answer, $voice);
+                $rating = $feedback['rating'];
+            }
+            if (!isset(REVIEW_RATINGS[$rating])) {
+                throw new AppException('Bitte die Lernrunde neu öffnen.', 422);
+            }
+            $anki->call('answer', $request + $values + ['rating' => $rating, 'elapsed' => $elapsed]);
             if (isset($_SESSION['reviewBlocks'][$deckId])) {
                 $_SESSION['reviewBlocks'][$deckId]['answered']++;
                 if ($_SESSION['reviewBlocks'][$deckId]['answered'] === REVIEW_BLOCK_SIZE * REVIEW_CYCLE_BLOCKS) {
                     unset($_SESSION['reviewBlocks'][$deckId]);
                 }
             }
+            if ($feedback !== null) {
+                respond($feedback + ['ratingLabel' => REVIEW_RATINGS[$rating]]);
+            }
             go('study', $deckId);
-        }
-
-        if ($verb === 'grade') {
-            $presentation = study($anki, $request);
-            $card = $presentation['card'];
-            if (
-                !$card || $card['id'] !== (int) input($_POST, key: 'card') || $card['reps'] !== (int) input($_POST, key: 'reps')
-                || $card['modified'] !== (int) input($_POST, key: 'modified')
-                || (int) $presentation['reversed'] !== (int) input($_POST, key: 'reversed')
-            ) {
-                throw new AppException('Diese Karte ist nicht mehr aktuell.', 409);
-            }
-            if ($card['question'] === '' || $card['answer'] === '') {
-                throw new AppException('Bei dieser Karte kannst du deine Antwort nur selbst bewerten.', 422);
-            }
-            $answer = input($_POST, key: 'answer', maximum: 1500);
-            $voice = uploads('voice', ['audio/wav' => 'wav'], limit: 900_000)[0] ?? null;
-            if ($answer === '' && $voice === null) {
-                throw new AppException('Bitte eine Antwort schreiben oder aufnehmen.', 422);
-            }
-            $feedback = $gateway->grade($card['question'], $card['answer'], $answer, $voice);
-            header('Content-Type: application/json; charset=utf-8');
-            echo json_encode($feedback, JSON_THROW_ON_ERROR);
-            exit;
         }
 
         throw new AppException('Unbekannte Anfrage.', 400);
@@ -530,10 +551,8 @@ try {
 } catch (AppException | PDOException $error) {
     $errorMessage = $error instanceof AppException ? $error->getMessage() : 'Die Anmeldung ist momentan nicht verfügbar.';
     http_response_code($error instanceof AppException ? ($error->getCode() ?: 400) : 503);
-    if ($verb === 'grade') {
-        header('Content-Type: application/json; charset=utf-8');
-        echo json_encode(['error' => $errorMessage], JSON_THROW_ON_ERROR);
-        exit;
+    if (in_array($verb, ['grade', 'grade-answer'], strict: true)) {
+        respond(['error' => $errorMessage]);
     }
     if ($view === 'media') {
         header('Content-Type: text/plain; charset=utf-8');
