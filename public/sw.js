@@ -1,7 +1,9 @@
-let cacheName = "bruno-shell-v33";
+let cacheName = "bruno-shell-v34";
 let shell = [
-  "/assets/app.css?v=26",
+  "/assets/app.css?v=27",
   "/assets/app.js?v=28",
+  "/assets/nunito-latin.woff2",
+  "/assets/nunito-latin-ext.woff2",
   "/assets/canvas-confetti-1.9.4.js",
   "/assets/icon.svg?v=4",
   "/assets/bruno-pause.svg",
