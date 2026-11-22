@@ -68,7 +68,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <?php if (in_array($view, ['home', 'study'], strict: true) && $account !== null): ?>
         <script defer src="/assets/canvas-confetti-1.9.4.js"></script>
     <?php endif; ?>
-    <script defer src="/assets/app.js?v=28"></script>
+    <script defer src="/assets/app.js?v=29"></script>
 </head>
 <body class="<?= $account === null ? 'guest' : 'signed-in' ?>">
 <?php if ($account === null): ?>
@@ -703,13 +703,13 @@ if ($view === 'create' && !isset($_POST['type'])) {
                                 <?php if ($canGrade): ?>
                                     <p class="small muted" data-record-status role="status"></p>
                                 <?php endif; ?>
-                                <button type="button" class="button primary" aria-controls="solution" aria-expanded="false" data-reveal>Aufdecken</button>
+                                <button type="button" class="button primary" aria-controls="solution" aria-expanded="false" data-reveal>Weiter</button>
                                 <?php if ($canGrade): ?>
-                                    <button type="button" class="button primary" data-record hidden>Sprechen</button>
+                                    <button type="button" class="button primary" data-record hidden>Weiter</button>
                                     <form method="post" class="form-grid" data-grade hidden>
                                         <?php $hidden(verb: 'grade-answer', fields: $reviewFields); ?>
                                         <textarea name="answer" aria-label="Antwort" rows="2" maxlength="1500" required></textarea>
-                                        <button class="button primary" type="submit">Los</button>
+                                        <button class="button primary" type="submit">Weiter</button>
                                     </form>
                                 <?php endif; ?>
                             </div>

@@ -216,7 +216,7 @@ class Study {
           for (let track of stream.getTracks()) {
             track.stop();
           }
-          this.$record.textContent = "Sprechen";
+          this.$record.textContent = "Weiter";
           this.$record.disabled = true;
           let payload;
           try {
