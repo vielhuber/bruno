@@ -323,19 +323,43 @@ class Editor {
   }
 }
 
-for (let $syncForm of document.querySelectorAll("[data-sync]")) {
-  $syncForm.addEventListener("submit", () => {
-    let $submit = $syncForm.querySelector('button[type="submit"]');
-    let label = "Synchronisierung läuft …";
-    $submit.disabled = true;
-    if ($submit.hasAttribute("aria-label")) {
-      $submit.setAttribute("aria-label", label);
-      $submit.title = label;
-      return;
+let $syncForm = document.querySelector("[data-sync]");
+$syncForm?.addEventListener("submit", () => {
+  let $submit = $syncForm.querySelector('button[type="submit"]');
+  $submit.disabled = true;
+  $submit.textContent = "Synchronisierung läuft …";
+});
+
+let $syncShortcut = document.querySelector("[data-sync-shortcut]");
+$syncShortcut?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  let $submit = $syncShortcut.querySelector('button[type="submit"]');
+  if ($submit.disabled) return;
+  let $feedback = $syncShortcut.querySelector('[role="status"]');
+  $submit.disabled = true;
+  $syncShortcut.dataset.state = "pending";
+  $feedback.textContent = "Synchronisierung läuft …";
+  let state = "error";
+  let message = "Synchronisierung fehlgeschlagen.";
+  try {
+    let response = await fetch($syncShortcut.action, {
+      method: "POST",
+      headers: { Accept: "application/json" },
+      body: new FormData($syncShortcut),
+    });
+    let result = await response.json();
+    if (response.ok && result.synced === true) {
+      state = "success";
+      message = "Synchronisiert.";
     }
-    $submit.textContent = label;
-  });
-}
+    if (!response.ok && result.error) message = result.error;
+  } catch {
+    message = "Kein Sync-Ergebnis erhalten.";
+  }
+  $syncShortcut.dataset.state = state;
+  $feedback.textContent = message;
+  $submit.disabled = false;
+});
 
 for (let Module of [Study, Editor, MediaStatus]) {
   for (let $element of document.querySelectorAll(Module.SELECTOR)) {

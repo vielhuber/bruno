@@ -63,6 +63,10 @@ img, video, audio { max-width: 100%; }
 .sidebar nav svg, .sync-shortcut svg { width: 19px; height: 19px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linejoin: round; stroke-linecap: round; }
 .sidebar-foot { margin-top: auto; display: grid; gap: 8px; min-width: 0; border-top: 1px solid var(--line); padding-top: 15px; }
 .sidebar-profile { display: grid; gap: 8px; }
+.sidebar-sync { display: flex; min-width: 0; align-items: center; }
+.sidebar-sync > span:not(:empty) { margin-inline-start: 8px; }
+.sidebar-sync[data-state="success"] { color: var(--positive); }
+.sidebar-sync[data-state="error"] { color: #ffb9c5; }
 .account { display: flex; gap: 8px; align-items: center; min-width: 0; padding-inline: 5px; color: var(--subtle); text-decoration: none; }
 .account:hover, .account[aria-current] { color: var(--accent); }
 .account-email { min-width: 0; overflow-wrap: anywhere; }
@@ -87,7 +91,8 @@ img, video, audio { max-width: 100%; }
 .button.primary:hover:not(:disabled) { background: var(--accent-hover); }
 .button.secondary { background: var(--raised); color: var(--text); border-color: var(--control); }
 .button.secondary:hover:not(:disabled) { background: var(--accent-surface); color: var(--accent-hover); }
-.button.sync-shortcut { width: 44px; padding: 0; }
+.button.sync-shortcut { flex: 0 0 44px; padding: 0; }
+.sidebar-sync[data-state="success"] .button.sync-shortcut { background: var(--positive-surface); color: var(--positive); }
 
 .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0 0 29px; }
 .stats > div { min-width: 0; border: 1px solid var(--line); background: var(--surface); padding: 13px 16px; border-radius: var(--radius); }

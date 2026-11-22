@@ -56,6 +56,7 @@ $credentials = null;
 $csrf = $_SESSION['csrf'];
 $flash = $_SESSION['flash'] ?? '';
 $verb = '';
+$ajaxSync = false;
 $view = 'home';
 $deckId = 0;
 $settings = ['ai' => $config['ai_key'] !== '', 'fal' => $config['fal_key'] !== '', 'sync' => $sync->isConfigured()];
@@ -145,8 +146,9 @@ function study(AnkiBridge $anki, array $request): array
 
 try {
     $verb = input($_POST, key: 'verb');
+    $ajaxSync = $verb === 'sync-now' && ($_SERVER['HTTP_ACCEPT'] ?? '') === 'application/json';
     $view = input($_GET, key: 'view') ?: 'home';
-    if ($view !== 'media-status') {
+    if ($view !== 'media-status' && !$ajaxSync) {
         unset($_SESSION['flash']);
     }
     $deckId = (int) input($_POST + $_GET, key: 'deck');
@@ -288,7 +290,10 @@ try {
             session_write_close();
             ignore_user_abort(enable: true);
             set_time_limit(seconds: 0);
-            $sync->run(manual: true);
+            $result = $sync->run(manual: true);
+            if ($ajaxSync) {
+                respond($result);
+            }
             go('sync');
         }
 
@@ -579,7 +584,7 @@ try {
 } catch (AppException | PDOException $error) {
     $errorMessage = $error instanceof AppException ? $error->getMessage() : 'Die Anmeldung ist momentan nicht verfügbar.';
     http_response_code($error instanceof AppException ? ($error->getCode() ?: 400) : 503);
-    if (in_array($verb, ['grade', 'grade-answer'], strict: true) || $view === 'media-status') {
+    if ($ajaxSync || in_array($verb, ['grade', 'grade-answer'], strict: true) || $view === 'media-status') {
         respond(['error' => $errorMessage]);
     }
     if ($view === 'media') {

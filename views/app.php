@@ -62,8 +62,8 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <link rel="icon" type="image/svg+xml" href="/assets/icon.svg?v=4">
     <link rel="apple-touch-icon" href="/assets/icon-192.png?v=4">
     <link rel="manifest" href="/manifest.webmanifest?v=4">
-    <link rel="stylesheet" href="/assets/app.css?v=13">
-    <script defer src="/assets/app.js?v=16"></script>
+    <link rel="stylesheet" href="/assets/app.css?v=14">
+    <script defer src="/assets/app.js?v=17"></script>
 </head>
 <body class="<?= $account === null ? 'guest' : 'signed-in' ?>">
 <?php if ($account === null): ?>
@@ -108,11 +108,12 @@ if ($view === 'create' && !isset($_POST['type'])) {
             </nav>
             <div class="sidebar-foot">
                 <div class="sidebar-profile">
-                    <form method="post" action="<?= $route('sync') ?>" data-sync>
+                    <form class="sidebar-sync" method="post" action="<?= $route('sync') ?>" data-sync-shortcut>
                         <?php $hidden(verb: 'sync-now'); ?>
                         <button class="button secondary sync-shortcut" type="submit" aria-label="Anki jetzt synchronisieren" title="Anki jetzt synchronisieren" <?= !$settings['sync'] || ($data['sync']['running'] ?? false) ? 'disabled' : '' ?>>
                             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5m5 0a8 8 0 1 0-2.5 5.8"/></svg>
                         </button>
+                        <span class="small" role="status"></span>
                     </form>
                     <a class="account" href="<?= $route('profile') ?>" <?= $view === 'profile' ? 'aria-current="page"' : '' ?>>
                         <span class="avatar" aria-hidden="true"><?= escape(mb_strtoupper(mb_substr($account->email, start: 0, length: 1))) ?></span>
