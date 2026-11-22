@@ -65,10 +65,10 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <link rel="apple-touch-icon" href="/assets/icon-192.png?v=4">
     <link rel="manifest" href="/manifest.webmanifest?v=4">
     <link rel="stylesheet" href="/assets/app.css?v=25">
-    <?php if ($view === 'home' && $account !== null): ?>
+    <?php if (in_array($view, ['home', 'study'], strict: true) && $account !== null): ?>
         <script defer src="/assets/canvas-confetti-1.9.4.js"></script>
     <?php endif; ?>
-    <script defer src="/assets/app.js?v=27"></script>
+    <script defer src="/assets/app.js?v=28"></script>
 </head>
 <body class="<?= $account === null ? 'guest' : 'signed-in' ?>">
 <?php if ($account === null): ?>
@@ -152,7 +152,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
             </div>
         </aside>
         <main class="workspace<?= in_array($view, ['home', 'study'], strict: true) && isset($data['card']) ? ' study-workspace' : '' ?>"
-            id="main" tabindex="-1" <?= ($data['celebrate'] ?? false) ? 'data-celebrate' : '' ?>>
+            id="main" tabindex="-1" <?= isset($data['reviewRating']) ? 'data-review-rating="' . $data['reviewRating'] . '"' : '' ?>>
             <?php if ($flash !== ''): ?><p class="notice" role="status"><?= escape($flash) ?></p><?php endif; ?>
             <?php if ($errorMessage !== ''): ?><p class="notice error" role="alert"><?= escape($errorMessage) ?></p><?php endif; ?>
 

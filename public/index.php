@@ -565,9 +565,7 @@ try {
             if ($feedback !== null) {
                 respond($feedback + ['ratingLabel' => REVIEW_RATINGS[$rating]] + ($saved ?? []));
             }
-            if ($daily && $rating === 4) {
-                $_SESSION['dailyCelebration'] = true;
-            }
+            $_SESSION['reviewRating'] = $rating;
             go($daily ? 'home' : 'study', $deckId);
         }
 
@@ -646,11 +644,13 @@ try {
         'sync' => ['sync' => $sync->status()],
         default => throw new AppException('Diese Seite gibt es nicht.', 404),
     };
+    if ($view === 'home' || $view === 'study') {
+        $data['reviewRating'] = $_SESSION['reviewRating'] ?? null;
+        unset($_SESSION['reviewRating']);
+    }
     if ($view === 'home') {
         $deckId = $data['deck'];
         $_SESSION['dailyDeck'] = $deckId;
-        $data['celebrate'] = $_SESSION['dailyCelebration'] ?? false;
-        unset($_SESSION['dailyCelebration']);
         if ($data['card'] === null) {
             $data['syncAfterCompletion'] = $settings['sync'] && isset($_SESSION['dailyAnswered']);
             unset($_SESSION['dailyAnswered']);

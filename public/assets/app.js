@@ -1,9 +1,10 @@
 let launchConfetti;
 
-function celebrateReview() {
+function celebrateReview(rating) {
   if (
     !window.confetti ||
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
+    (rating <= 2 && !window.OffscreenCanvas?.prototype.transferToImageBitmap)
   ) {
     return;
   }
@@ -12,7 +13,34 @@ function celebrateReview() {
     useWorker: false,
     disableForReducedMotion: true,
   });
+  if (rating <= 2) {
+    let retry = rating === 1;
+    let scalar = 1.8;
+    launchConfetti({
+      particleCount: retry ? 60 : 15,
+      spread: retry ? 135 : 66,
+      startVelocity: retry ? 42 : 30,
+      ticks: retry ? 145 : 100,
+      origin: { x: 0.5, y: 0.68 },
+      scalar,
+      shapes: [
+        window.confetti.shapeFromText({ text: retry ? "👻" : "💪", scalar }),
+      ],
+    });
+    return;
+  }
   let colors = ["#c4b3ff", "#a9ebce", "#ffcf7d", "#ff9fbf", "#80ddff"];
+  if (rating === 3) {
+    launchConfetti({
+      particleCount: 24,
+      spread: 58,
+      startVelocity: 30,
+      ticks: 90,
+      origin: { x: 0.5, y: 0.68 },
+      colors,
+    });
+    return;
+  }
   for (let [x, angle] of [
     [0.05, 65],
     [0.95, 115],
@@ -354,7 +382,6 @@ class Study {
         if (result.remaining === 0) {
           $nextCard.textContent = "Fertig";
         }
-        if (result.rating === 4) celebrateReview();
       }
       if (payload.has("voice") && result.remaining !== 0) {
         $nextCard.addEventListener("click", (event) => {
@@ -376,6 +403,7 @@ class Study {
       }
       this.reveal();
       this.$next.hidden = false;
+      window.requestAnimationFrame(() => celebrateReview(result.rating));
     } catch (error) {
       this.$feedback.classList.add("error");
       this.$feedback.textContent =
@@ -587,7 +615,8 @@ for (let Module of [Study, Editor, MediaStatus]) {
   }
 }
 
-if (document.querySelector("[data-celebrate]")) celebrateReview();
+let $ratedReview = document.querySelector("[data-review-rating]");
+if ($ratedReview) celebrateReview(Number($ratedReview.dataset.reviewRating));
 
 document.querySelector("[data-generate-batch]")?.requestSubmit();
 
