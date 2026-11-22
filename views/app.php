@@ -64,11 +64,11 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <link rel="icon" type="image/svg+xml" href="/assets/icon.svg?v=4">
     <link rel="apple-touch-icon" href="/assets/icon-192.png?v=4">
     <link rel="manifest" href="/manifest.webmanifest?v=4">
-    <link rel="stylesheet" href="/assets/app.css?v=22">
+    <link rel="stylesheet" href="/assets/app.css?v=23">
     <?php if ($view === 'home' && $account !== null): ?>
         <script defer src="/assets/canvas-confetti-1.9.4.js"></script>
     <?php endif; ?>
-    <script defer src="/assets/app.js?v=24"></script>
+    <script defer src="/assets/app.js?v=25"></script>
 </head>
 <body class="<?= $account === null ? 'guest' : 'signed-in' ?>">
 <?php if ($account === null): ?>
@@ -111,6 +111,16 @@ if ($view === 'create' && !isset($_POST['type'])) {
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 5v5h-5M4 19v-5h5m11-4a8 8 0 0 0-14-4m-2 8a8 8 0 0 0 14 4"/></svg>
                     Wiederholen
                 </a>
+                <?php if ($settings['ai']): ?>
+                    <label class="answer-mode" hidden>
+                        Antwortmodus
+                        <select data-answer-mode="<?= escape($account->id) ?>">
+                            <option value="reveal">Aufdecken</option>
+                            <option value="speak">Sprechen</option>
+                            <option value="text">Eingeben</option>
+                        </select>
+                    </label>
+                <?php endif; ?>
             </nav>
             <div class="sidebar-foot" id="account-menu">
                 <div class="sidebar-profile">
@@ -640,17 +650,10 @@ if ($view === 'create' && !isset($_POST['type'])) {
                             <?php if ($card['questionMedia']): ?>
                                 <div class="card-media"><?php $cardMedia($card['questionMedia'], $deckId, $card['id']); ?></div>
                             <?php endif; ?>
-                            <div class="inline-actions page-actions<?= $daily ? ' daily-actions' : '' ?>" data-answer-actions>
-                                <button type="button" class="button primary" aria-controls="solution" aria-expanded="false" data-reveal><?= $daily ? 'Aufdecken' : 'Direkt aufdecken' ?></button>
+                            <div class="inline-actions page-actions<?= $daily ? ' daily-actions' : '' ?>" data-answer-actions hidden>
+                                <button type="button" class="button primary" aria-controls="solution" aria-expanded="false" data-reveal>Aufdecken</button>
                                 <?php if ($canGrade): ?>
-                                    <button type="button" class="button secondary<?= $daily ? ' icon-button' : '' ?>" title="Audioantwort" data-record>
-                                        <?php if ($daily): ?><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11v1a7 7 0 0 0 14 0v-1m-7 8v3m-4 0h8"/></svg><?php endif; ?>
-                                        <span<?= $daily ? ' class="visually-hidden"' : '' ?> data-record-label>Audioaufnahme</span>
-                                    </button>
-                                    <button type="button" class="button secondary<?= $daily ? ' icon-button' : '' ?>" title="Direkteingabe" aria-controls="text-answer" aria-expanded="false" data-text-answer>
-                                        <?php if ($daily): ?><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M6 9h2m3 0h2m3 0h2m-12 4h2m3 0h2m3 0h2m-9 3h6"/></svg><?php endif; ?>
-                                        <span<?= $daily ? ' class="visually-hidden"' : '' ?>>Direkteingabe</span>
-                                    </button>
+                                    <button type="button" class="button primary" data-record hidden>Sprechen</button>
                                 <?php endif; ?>
                                 <?php if ($data['hintLetter'] !== ''): ?>
                                     <button type="button" class="button secondary icon-button" aria-label="Tipp anzeigen" title="Tipp anzeigen" aria-controls="study-hint" data-study-hint <?= $data['hintUsed'] ? 'disabled' : '' ?>>
@@ -662,12 +665,12 @@ if ($view === 'create' && !isset($_POST['type'])) {
                                 <p id="study-hint" class="small muted study-status" role="status"><?= $data['hintUsed'] ? 'Tipp: ' . escape($data['hintLetter']) . ' · Höchstens „Gut“ möglich.' : '' ?></p>
                             <?php endif; ?>
                             <?php if ($canGrade): ?>
-                                <form id="text-answer" method="post" class="form-grid answer-form" data-grade hidden>
+                                <form method="post" class="form-grid answer-form" data-grade hidden>
                                     <?php $hidden(verb: 'grade-answer', fields: $reviewFields); ?>
                                     <textarea name="answer" aria-label="Antwort" rows="2" maxlength="1500" required></textarea>
                                     <button class="button primary" type="submit">Los</button>
                                 </form>
-                                <p class="small muted" data-record-status role="status"><?= $daily ? '' : 'Audio und Text gehen zur KI-Prüfung. Die Bewertung wird automatisch gespeichert.' ?></p>
+                                <p class="small muted" data-record-status role="status"></p>
                                 <div class="notice" data-feedback role="status" hidden></div>
                             <?php endif; ?>
                             <section id="solution" class="solution" tabindex="-1" hidden>

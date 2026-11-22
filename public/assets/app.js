@@ -57,13 +57,13 @@ class Study {
     this.$feedback = this.$root.querySelector("[data-feedback]");
     this.$hint = this.$root.querySelector("[data-study-hint]");
     this.hintUsed = this.$hint?.disabled ?? false;
-    let $recordStatus = this.$root.querySelector("[data-record-status]");
+    this.$recordStatus = this.$root.querySelector("[data-record-status]");
     this.$reveal.addEventListener("click", () => {
       this.reveal();
       this.$ratings.hidden = false;
       if (this.$feedback) {
         this.$feedback.hidden = true;
-        $recordStatus.textContent = "";
+        this.$recordStatus.textContent = "";
       }
     });
     this.$hint?.addEventListener("click", async () => {
@@ -125,24 +125,18 @@ class Study {
       window.addEventListener("pagehide", () => speech.cancel());
     }
     if (!this.$form) {
+      this.$actions.hidden = false;
       return;
     }
 
     this.$answer = this.$form.elements.namedItem("answer");
-    this.$textAnswer = this.$root.querySelector("[data-text-answer]");
     this.$record = this.$root.querySelector("[data-record]");
-    let $recordLabel = this.$record.querySelector("[data-record-label]");
     this.$submit = this.$form.querySelector('button[type="submit"]');
     this.$next = this.$root.querySelector("[data-next-card]");
     let recording;
     let cancelCapture;
     window.addEventListener("pagehide", () => cancelCapture?.());
 
-    this.$textAnswer.addEventListener("click", () => {
-      this.$form.hidden = false;
-      this.$textAnswer.setAttribute("aria-expanded", "true");
-      this.$answer.focus();
-    });
     this.$form.addEventListener("submit", (event) => {
       event.preventDefault();
       if (!this.$submit.disabled) {
@@ -156,10 +150,6 @@ class Study {
       window.OfflineAudioContext,
     );
     this.$record.disabled = !this.canRecord;
-    if (!this.canRecord) {
-      $recordStatus.textContent =
-        "Aufnahmen sind in diesem Browser nicht verfügbar.";
-    }
 
     this.$record.addEventListener("click", async () => {
       if (recording?.state === "recording") {
@@ -198,12 +188,12 @@ class Study {
           for (let track of stream.getTracks()) {
             track.stop();
           }
-          $recordLabel.textContent = "Audioaufnahme";
+          this.$record.textContent = "Sprechen";
           this.$record.disabled = true;
           let payload;
           try {
             if (discarded) {
-              $recordStatus.textContent = "";
+              this.$recordStatus.textContent = "";
               this.setBusy(false);
               return;
             }
@@ -263,9 +253,9 @@ class Study {
             payload = new FormData(this.$form);
             payload.set("answer", "");
             payload.set("voice", audioFile);
-            $recordStatus.textContent = "";
+            this.$recordStatus.textContent = "";
           } catch {
-            $recordStatus.textContent =
+            this.$recordStatus.textContent =
               "Die Aufnahme konnte nicht verarbeitet werden.";
             this.setBusy(false);
           } finally {
@@ -282,8 +272,9 @@ class Study {
             recording.stop();
           }
         }, 20000);
-        $recordLabel.textContent = "Aufnahme stoppen";
-        $recordStatus.textContent = "Aufnahme läuft (maximal 20 Sekunden).";
+        this.$record.textContent = "Aufnahme stoppen";
+        this.$recordStatus.textContent =
+          "Aufnahme läuft (maximal 20 Sekunden).";
         this.$record.disabled = false;
       } catch {
         cancelCapture = undefined;
@@ -293,14 +284,34 @@ class Study {
         if (context) {
           await context.close();
         }
-        $recordStatus.textContent =
-          "Kein Mikrofonzugriff. Du kannst die Antwort schreiben.";
+        this.$recordStatus.textContent =
+          "Kein Mikrofonzugriff. Wähle im Menü einen anderen Antwortmodus.";
         this.setBusy(false);
       }
     });
-    if (this.canRecord && nextAudioPage === window.location.href) {
+    this.applyMode();
+    $answerMode.addEventListener("change", () => this.applyMode());
+    this.$actions.hidden = false;
+    if (
+      this.canRecord &&
+      !this.$record.hidden &&
+      nextAudioPage === window.location.href
+    ) {
       this.$record.click();
     }
+  }
+
+  applyMode() {
+    if (!this.$solution.hidden) return;
+    let mode = $answerMode.value;
+    this.$reveal.hidden = mode !== "reveal";
+    this.$record.hidden = mode !== "speak";
+    this.$form.hidden = mode !== "text";
+    this.$feedback.hidden = true;
+    this.$recordStatus.textContent =
+      mode === "speak" && !this.canRecord
+        ? "Aufnahmen sind in diesem Browser nicht verfügbar."
+        : "";
   }
 
   setBusy(busy) {
@@ -310,7 +321,7 @@ class Study {
     }
     if (!this.$form) return;
     this.$record.disabled = busy || !this.canRecord;
-    this.$textAnswer.disabled = busy;
+    $answerMode.disabled = busy;
     this.$submit.disabled = busy;
     this.$answer.readOnly = busy;
   }
@@ -371,6 +382,7 @@ class Study {
         error instanceof SyntaxError
           ? "Die Antwort konnte nicht geprüft werden."
           : error.message;
+    } finally {
       this.setBusy(false);
     }
   }
@@ -528,6 +540,37 @@ $syncShortcut?.addEventListener("submit", (event) => {
 let $completionSync = document.querySelector("[data-completion-sync]");
 if ($syncShortcut && $completionSync) syncNow($syncShortcut, $completionSync);
 
+let $menu = document.querySelector("[data-mobile-menu]");
+$menu?.addEventListener("click", () => {
+  $menu.setAttribute(
+    "aria-expanded",
+    String($menu.getAttribute("aria-expanded") !== "true"),
+  );
+});
+
+let $answerMode = document.querySelector("[data-answer-mode]");
+if ($answerMode) {
+  let key = `bruno-answer-mode:${$answerMode.dataset.answerMode}`;
+  try {
+    $answerMode.value = localStorage.getItem(key) || "reveal";
+  } catch {
+    $answerMode.value = "reveal";
+  }
+  if (!$answerMode.value) $answerMode.value = "reveal";
+  $answerMode.addEventListener("change", () => {
+    if ($menu?.getAttribute("aria-expanded") === "true") {
+      $menu.setAttribute("aria-expanded", "false");
+      $menu.focus();
+    }
+    try {
+      localStorage.setItem(key, $answerMode.value);
+    } catch {
+      return;
+    }
+  });
+  $answerMode.closest("label").hidden = false;
+}
+
 let nextAudioPage;
 try {
   nextAudioPage = sessionStorage.getItem(Study.NEXT_AUDIO_KEY);
@@ -543,14 +586,6 @@ for (let Module of [Study, Editor, MediaStatus]) {
 }
 
 if (document.querySelector("[data-celebrate]")) celebrateReview();
-
-let $menu = document.querySelector("[data-mobile-menu]");
-$menu?.addEventListener("click", () => {
-  $menu.setAttribute(
-    "aria-expanded",
-    String($menu.getAttribute("aria-expanded") !== "true"),
-  );
-});
 
 document.querySelector("[data-generate-batch]")?.requestSubmit();
 
