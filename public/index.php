@@ -572,6 +572,9 @@ try {
         }
         $remaining = $end - $start + 1;
         header('Content-Type: ' . $media['mime']);
+        if ($media['mime'] === 'image/svg+xml') {
+            header("Content-Security-Policy: default-src 'none'; img-src data:; frame-ancestors 'none'; sandbox");
+        }
         header('Accept-Ranges: bytes');
         header('Content-Length: ' . $remaining);
         if ($media['attachment']) {

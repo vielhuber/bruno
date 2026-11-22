@@ -3,11 +3,12 @@ import fcntl
 import json
 import re
 import time
+from html import escape
 from urllib.error import HTTPError
 from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
-from collection_store import collection, metadata, save_deck, save_media, save_note, unpack
+from collection_store import clean, collection, metadata, save_deck, save_media, save_note, unpack
 
 IMAGE_ENDPOINT = 'https://ai.rebuhleiv.xyz/v1/images/generations'
 VIDEO_ENDPOINT = 'fal-ai/veo3.1/lite'
@@ -47,14 +48,32 @@ def safe_queue_url(url, kind, is_status):
     return 'https://queue.fal.run' + parsed.path
 
 
-def image_file(data):
+def image_file(data, words=()):
     if data.startswith(b'\x89PNG\r\n\x1a\n'):
-        return 'png', data
-    if data.startswith(b'\xff\xd8\xff'):
-        return 'jpg', data
-    if data.startswith(b'RIFF') and data[8:12] == b'WEBP':
-        return 'webp', data
-    raise ValueError('Unexpected image format')
+        extension = 'png'
+    elif data.startswith(b'\xff\xd8\xff'):
+        extension = 'jpg'
+    elif data.startswith(b'RIFF') and data[8:12] == b'WEBP':
+        extension = 'webp'
+    else:
+        raise ValueError('Unexpected image format')
+    if not words:
+        return extension, data
+
+    image_format = 'jpeg' if extension == 'jpg' else extension
+    encoded = base64.b64encode(data).decode('ascii')
+    labels = ''.join(
+        f'<text x="512" y="{850 + index * 115}" font-size="{max(1, min(88, 880 // (len(word) or 1)))}">'
+        f'{escape(word)}</text>'
+        for index, word in enumerate(words)
+    )
+    return 'svg', (
+        '<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">'
+        f'<image href="data:image/{image_format};base64,{encoded}" width="1024" height="1024"'
+        ' preserveAspectRatio="xMidYMid slice"/>'
+        '<rect y="740" width="1024" height="284" fill="#171717" fill-opacity="0.9"/>'
+        f'<g fill="white" font-family="sans-serif" font-weight="700" text-anchor="middle">{labels}</g></svg>'
+    ).encode()
 
 
 def result_file(result, kind):
@@ -113,17 +132,19 @@ def pending_jobs(col):
         for kind in ('audio', 'video'):
             job = meta.get('jobs', {}).get(kind, {})
             if job.get('state') in PENDING:
-                jobs.append((deck['id'], None, kind, job, job.get('prompt', meta.get('lesson', ''))))
+                jobs.append((deck['id'], None, kind, job, job.get('prompt', meta.get('lesson', '')), ()))
     for note_id in col.find_notes('tag:bruno_vocab'):
         note = col.get_note(note_id)
         if len(note.fields) != 2:
             continue
-        job = unpack(note.fields[1])[1].get('imageJob', {})
+        back, meta = unpack(note.fields[1])
+        job = meta.get('imageJob', {})
         if job.get('state') not in PENDING:
             continue
         cards = note.cards()
         if len(cards) == 1:
-            jobs.append((cards[0].did, note_id, 'image', job, job.get('prompt', '')))
+            words = (meta['mnemonicWord'], clean(back)) if meta.get('mnemonicWord') else ()
+            jobs.append((cards[0].did, note_id, 'image', job, job.get('prompt', ''), words))
     return sorted(jobs, key=lambda item: item[3].get('checked', 0))
 
 
@@ -141,7 +162,7 @@ def run_jobs(directory, ai_key, fal_key):
         headers = {'Authorization': 'Key ' + fal_key, 'Content-Type': 'application/json', 'X-Fal-Store-IO': '0'}
         handled = 0
         image_requested = False
-        for deck_id, note_id, kind, job, prompt in jobs:
+        for deck_id, note_id, kind, job, prompt, words in jobs:
             if handled >= 8:
                 break
             state = job['state']
@@ -182,7 +203,7 @@ def run_jobs(directory, ai_key, fal_key):
                     update = {'state': 'failed'}
                     encoded = (response.get('data') or [{}])[0].get('b64_json')
                     if encoded:
-                        file = image_file(base64.b64decode(encoded, validate=True))
+                        file = image_file(base64.b64decode(encoded, validate=True), words)
                         update = {'state': 'ready'}
                 elif state == 'queued':
                     payload = {

@@ -18,7 +18,7 @@ from anki.decks import DEFAULT_DECK_ID
 from anki.stdmodels import get_stock_notetypes
 
 MARKER = re.compile(r'<!--bruno:([A-Za-z0-9_-]+)-->')
-MEDIA_NAME = re.compile(r'bruno-(\d+)-[0-9a-f]{32}\.(?:pdf|txt|png|jpg|webp|mp3|mp4)')
+MEDIA_NAME = re.compile(r'bruno-(\d+)-[0-9a-f]{32}\.(?:pdf|txt|png|jpg|webp|mp3|mp4|svg)')
 ANSWER_SEPARATOR = re.compile(r'<hr[^>]+\bid=["\']?answer\b[^>]*>', re.I)
 AV_MARKER = re.compile(r'\[(?:sound|anki:play):[^\]]*\]')
 MEDIA_TYPES = {
@@ -318,6 +318,7 @@ def generate(col, owner, request):
             note.tags = ['bruno_vocab' if request['vocabulary'] else 'bruno']
             note.fields[1] = note_back(back, {
                 'hint': item['hint'],
+                'mnemonicWord': item.get('mnemonicWord', ''),
                 'imageJob': {'state': 'queued', 'prompt': item['imagePrompt']},
             }) if request['vocabulary'] else back
             notes.append(AddNoteRequest(note, deck_id))
@@ -408,6 +409,8 @@ def media_path(col, deck, file, card_id):
     meta = metadata(deck)
     source = bool(MEDIA_NAME.fullmatch(file)) and any(item['file'] == file for item in meta.get('sources', []))
     mime = 'application/octet-stream' if source else media_type(file)
+    if mime is None and file.endswith('.svg') and MEDIA_NAME.fullmatch(file):
+        mime = 'image/svg+xml'
     if mime is None:
         raise Rejected('Datei nicht gefunden.', 404)
     linked = source or file in {meta.get('audio'), meta.get('video')}
