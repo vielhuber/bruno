@@ -138,29 +138,28 @@ if ($view === 'create' && !isset($_POST['type'])) {
             <?php if ($errorMessage !== ''): ?><p class="notice error" role="alert"><?= escape($errorMessage) ?></p><?php endif; ?>
 
             <?php switch ($view):
-                case 'home': ?>
-                <?php
-                $decks = $data['decks'];
-                    $due = array_sum(array_column($decks, 'due'));
-                    $new = array_sum(array_column($decks, 'new'));
-                    ?>
-                <header class="screen-header"><h1>Übersicht</h1></header>
-                <dl class="stats" aria-label="Lernstand">
-                    <div class="stat-accent"><dt>Jetzt bereit</dt><dd><?= $due ?></dd></div>
-                    <div><dt>Davon neu</dt><dd><?= $new ?></dd></div>
-                    <div><dt>Stapel</dt><dd><?= count($decks) ?></dd></div>
-                </dl>
-            <?php break;
+                case 'home':
                 case 'learn':
                 case 'review': ?>
-                <?php $review = $view === 'review'; ?>
+                <?php
+                    $overview = $view === 'home';
+                    $review = $view === 'review';
+                    $decks = $data['decks'];
+                    ?>
                 <header class="screen-header"><h1><?= escape($label) ?></h1></header>
-                <?php if (!$data['decks']): ?>
+                <?php if ($overview): ?>
+                    <dl class="stats" aria-label="Lernstand">
+                        <div class="stat-accent"><dt>Jetzt bereit</dt><dd><?= array_sum(array_column($decks, 'due')) ?></dd></div>
+                        <div><dt>Davon neu</dt><dd><?= array_sum(array_column($decks, 'new')) ?></dd></div>
+                        <div><dt>Stapel</dt><dd><?= count($decks) ?></dd></div>
+                    </dl>
+                <?php endif; ?>
+                <?php if (!$decks): ?>
                     <p class="panel muted">Noch keine Stapel.</p>
                 <?php endif; ?>
-                <?php if ($data['decks']): ?>
+                <?php if ($decks): ?>
                     <div class="deck-grid">
-                        <?php foreach ($data['decks'] as $deck): ?>
+                        <?php foreach ($decks as $deck): ?>
                             <?php $notDue = $review && $deck['due'] === 0; ?>
                             <article class="panel deck">
                                 <div class="deck-top">
@@ -170,10 +169,32 @@ if ($view === 'create' && !isset($_POST['type'])) {
                                 <h2><?= escape($deck['name']) ?></h2>
                                 <p class="muted small"><?= $deck['total'] ?> <?= $deck['total'] === 1 ? 'Karte' : 'Karten' ?></p>
                                 <div class="inline-actions">
+                                    <?php if ($overview): ?>
+                                        <?php $editing = $errorMessage !== '' && $verb === 'rename-deck' && $deckId === $deck['id']; ?>
+                                        <details <?= $editing ? 'open' : '' ?>>
+                                            <summary class="button secondary">Bearbeiten</summary>
+                                            <form class="form-grid page-actions" method="post" action="/">
+                                                <?php $hidden(verb: 'rename-deck', fields: ['deck' => $deck['id']]); ?>
+                                                <label>Stapelname <input name="title" value="<?= escape($editing ? input($_POST, key: 'title') : $deck['name']) ?>" maxlength="100" required></label>
+                                                <button class="button secondary" type="submit">Namen speichern</button>
+                                                <p><a class="button secondary" href="<?= $route('create', $deck['id']) ?>">Karten hinzufügen</a></p>
+                                            </form>
+                                        </details>
+                                        <?php if ($deck['deletable']): ?>
+                                            <details <?= $errorMessage !== '' && $verb === 'delete-deck' && $deckId === $deck['id'] ? 'open' : '' ?>>
+                                                <summary class="button secondary">Löschen</summary>
+                                                <form class="form-grid page-actions" method="post" action="/">
+                                                    <?php $hidden(verb: 'delete-deck', fields: ['deck' => $deck['id']]); ?>
+                                                    <p class="small muted">Der Stapel und seine Karten werden aus Anki gelöscht.</p>
+                                                    <button class="button secondary" type="submit">Stapel endgültig löschen</button>
+                                                </form>
+                                            </details>
+                                        <?php endif; ?>
+                                    <?php endif; ?>
                                     <?php if ($notDue): ?>
                                         <span class="badge">Keine Karten fällig</span>
                                     <?php endif; ?>
-                                    <?php if (!$notDue): ?>
+                                    <?php if (!$overview && !$notDue): ?>
                                         <a class="button primary" href="<?= $route($review ? 'study' : 'lesson', $deck['id']) ?>"><?= escape($label) ?></a>
                                     <?php endif; ?>
                                 </div>

@@ -14,6 +14,7 @@ from pathlib import Path
 from urllib.parse import unquote
 
 from anki.collection import AddNoteRequest, Collection
+from anki.decks import DEFAULT_DECK_ID
 from anki.stdmodels import get_stock_notetypes
 
 MARKER = re.compile(r'<!--bruno:([A-Za-z0-9_-]+)-->')
@@ -113,6 +114,7 @@ def deck_list(col, owner):
             'due': node.learn_count + node.review_count + node.new_count,
             'new': node.new_count,
             'vocabulary': meta.get('vocabulary', False),
+            'deletable': deck['id'] != DEFAULT_DECK_ID,
         })
     return sorted(decks, key=lambda deck: deck['name'].casefold())
 
@@ -249,8 +251,9 @@ def save_note(col, note, back, meta):
     col.update_note(note)
 
 
-def ensure_deck_name_available(col, title):
-    if col.decks.by_name(title):
+def ensure_deck_name_available(col, title, deck_id=None):
+    existing = col.decks.by_name(title)
+    if existing and existing['id'] != deck_id:
         raise Rejected('Der Name ist in Anki bereits belegt. Bitte einen anderen Titel wählen.', 409)
 
 

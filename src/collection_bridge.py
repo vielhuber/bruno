@@ -7,6 +7,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from anki.collection import SyncOutput
+from anki.decks import DEFAULT_DECK_ID
 from anki.sync_pb2 import SyncAuth
 
 from collection_store import (
@@ -98,6 +99,17 @@ def dispatch(directory, request):
         if action == 'generate':
             return generate(col, owner, request)
         deck = owned_deck(col, request['deck'], owner)
+        if action in {'rename-deck', 'delete-deck'} and '::' in deck['name']:
+            raise Rejected('Stapel nicht gefunden.', 404)
+        if action == 'rename-deck':
+            ensure_deck_name_available(col, request['title'], deck['id'])
+            col.decks.rename(deck['id'], request['title'])
+            return None
+        if action == 'delete-deck':
+            if deck['id'] == DEFAULT_DECK_ID:
+                raise Rejected('Der Anki-Standardstapel kann nicht gelöscht werden.', 422)
+            col.decks.remove([deck['id']])
+            return None
         if action == 'study':
             return {'name': deck['name'], 'card': study(col, deck), 'vocabulary': metadata(deck).get('vocabulary') is True}
         if action == 'answer':

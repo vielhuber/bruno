@@ -74,6 +74,18 @@ function go(string $view = 'home', int $deck = 0): never
 }
 
 /**
+ * Prevent submitted names from creating a deck hierarchy.
+ */
+$readDeckTitle = static function (array $values): string {
+    $title = input($values, key: 'title', maximum: 100);
+    if ($title === '' || str_contains($title, '::') || preg_match('/[[:cntrl:]]/', $title)) {
+        throw new AppException('Bitte einen flachen Stapeltitel ohne Sondertrennzeichen eingeben.', 422);
+    }
+
+    return $title;
+};
+
+/**
  * Return the data for an asynchronous request without rendering the page.
  *
  * @param array<string, mixed> $payload
@@ -304,6 +316,22 @@ try {
             go('sync');
         }
 
+        if ($verb === 'rename-deck') {
+            $anki->call('rename-deck', $request + ['title' => $readDeckTitle($_POST)]);
+            $_SESSION['flash'] = 'Stapel umbenannt.';
+            go();
+        }
+
+        if ($verb === 'delete-deck') {
+            $anki->call('delete-deck', $request);
+            unset($_SESSION['reviewBlocks'][$deckId]);
+            if (($_SESSION['deckDraft']['payload']['deck'] ?? null) === $deckId) {
+                unset($_SESSION['deckDraft']);
+            }
+            $_SESSION['flash'] = 'Stapel gelöscht.';
+            go();
+        }
+
         if ($verb === 'generate') {
             $cardCount = filter_var($_POST['card_count'] ?? Gateway::DEFAULT_CARD_COUNT, FILTER_VALIDATE_INT, [
                 'options' => ['min_range' => 1, 'max_range' => Gateway::MAX_CARD_COUNT],
@@ -312,12 +340,9 @@ try {
                 throw new AppException('Bitte eine Kartenanzahl zwischen 1 und ' . Gateway::MAX_CARD_COUNT . ' eingeben.', 422);
             }
             $owned = $deckId ? $anki->call('lesson', $request) : null;
-            $title = $owned['name'] ?? input($_POST, key: 'title', maximum: 100);
+            $title = $owned['name'] ?? $readDeckTitle($_POST);
             $focus = input($_POST, key: 'focus', maximum: 2000);
             $type = input($_POST, key: 'type');
-            if ($title === '' || (!$owned && (str_contains($title, '::') || preg_match('/[[:cntrl:]]/', $title)))) {
-                throw new AppException('Bitte einen flachen Stapeltitel ohne Sondertrennzeichen eingeben.', 422);
-            }
             if (!in_array($type, ['topic', 'vocabulary', 'test'], strict: true)) {
                 throw new AppException('Bitte einen gültigen Kartentyp auswählen.', 422);
             }
@@ -592,8 +617,9 @@ try {
         echo $errorMessage;
         exit;
     }
-    if ($account instanceof Account && ($verb === 'generate' || ($view === 'create' && $_POST === []))) {
-        $view = 'create';
+    $managingDeck = in_array($verb, ['rename-deck', 'delete-deck'], strict: true);
+    if ($account instanceof Account && ($managingDeck || $verb === 'generate' || ($view === 'create' && $_POST === []))) {
+        $view = $managingDeck ? 'home' : 'create';
         try {
             $data['decks'] = $anki->call('list', $request);
         } catch (AppException) {
