@@ -64,7 +64,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <link rel="apple-touch-icon" href="/assets/icon-192.png?v=4">
     <link rel="manifest" href="/manifest.webmanifest?v=4">
     <link rel="stylesheet" href="/assets/app.css?v=15">
-    <script defer src="/assets/app.js?v=18"></script>
+    <script defer src="/assets/app.js?v=19"></script>
 </head>
 <body class="<?= $account === null ? 'guest' : 'signed-in' ?>">
 <?php if ($account === null): ?>
@@ -642,7 +642,16 @@ if ($view === 'create' && !isset($_POST['type'])) {
                                 <div class="notice" data-feedback role="status" hidden></div>
                             <?php endif; ?>
                             <section id="solution" class="solution" tabindex="-1" hidden>
-                                <p class="eyebrow">Lösung</p><p class="answer preline"><?= escape($card['answer']) ?></p>
+                                <p class="eyebrow">Lösung</p>
+                                <div class="inline-actions">
+                                    <p class="answer preline" data-speech-text><?= escape($card['answer']) ?></p>
+                                    <?php if ($card['answer'] !== ''): ?>
+                                        <button type="button" class="button secondary icon-button" aria-label="Lösung anhören" title="Lösung anhören" data-speak="<?= escape($data['speechLanguage']) ?>" hidden>
+                                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+                                        </button>
+                                    <?php endif; ?>
+                                </div>
+                                <p class="small muted study-status" role="status" data-speech-status></p>
                                 <?php if ($card['answerMedia']): ?>
                                     <div class="card-media"><?php $cardMedia($card['answerMedia'], $deckId, $card['id']); ?></div>
                                 <?php endif; ?>

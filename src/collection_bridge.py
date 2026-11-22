@@ -117,7 +117,11 @@ def dispatch(directory, request):
             col.decks.remove([deck['id']])
             return None
         if action == 'study':
-            return {'name': deck['name'], 'card': study(col, deck), 'vocabulary': metadata(deck).get('vocabulary') is True}
+            meta = metadata(deck)
+            return {
+                'name': deck['name'], 'card': study(col, deck),
+                'vocabulary': meta.get('vocabulary') is True, 'focus': meta.get('focus', ''),
+            }
         if action == 'answer':
             return answer_card(col, deck, request)
         if action == 'lesson':

@@ -132,6 +132,7 @@ function study(AnkiBridge $anki, array $request): array
     $data['reversed'] = false;
     $data['hintUsed'] = false;
     $data['hintLetter'] = '';
+    $data['speechLanguage'] = 'de';
     $deck = $request['deck'];
     if (!$data['vocabulary']) {
         unset($_SESSION['reviewBlocks'][$deck]);
@@ -153,6 +154,12 @@ function study(AnkiBridge $anki, array $request): array
         $data['card']['answer'] = $card['question'];
         $data['card']['questionMedia'] = $card['answerMedia'];
         $data['card']['answerMedia'] = $card['questionMedia'];
+    }
+    if (!$data['reversed']) {
+        $languages = ['englisch' => 'en', 'französisch' => 'fr', 'spanisch' => 'es', 'italienisch' => 'it', 'latein' => 'la'];
+        $pattern = '/\b(' . implode('|', array_keys($languages)) . ')(?:e[nmrs]?)?\b/u';
+        $context = mb_strtolower($data['name'] . ' ' . $data['focus']);
+        $data['speechLanguage'] = preg_match($pattern, $context, $language) === 1 ? $languages[$language[1]] : '';
     }
     $data['hintUsed'] = ($_SESSION['studyHints'][$deck][$card['id']] ?? null) === [$card['reps'], $card['modified']];
     if (preg_match('/\p{L}\p{M}*/u', $data['card']['answer'], $letter) === 1) {
