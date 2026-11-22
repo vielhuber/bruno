@@ -306,7 +306,9 @@ class Editor {
       $documents.required = $type.value === "test";
     };
     $deck.addEventListener("change", () => {
-      let vocabulary = $deck.selectedOptions[0]?.dataset.vocabulary === "yes";
+      let vocabulary =
+        $deck.value === "0" ||
+        $deck.selectedOptions[0]?.dataset.vocabulary === "yes";
       if (vocabulary || $type.value === "vocabulary") {
         $type.value = vocabulary ? "vocabulary" : "topic";
       }

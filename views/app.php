@@ -39,7 +39,7 @@ $label = match ($view) {
     'profile' => 'Mein Profil',
     default => 'Übersicht',
 };
-$selectedType = input($_POST, key: 'type') ?: 'topic';
+$selectedType = input($_POST, key: 'type') ?: ($deckId === 0 ? 'vocabulary' : 'topic');
 if ($view === 'create' && !isset($_POST['type'])) {
     foreach ($data['decks'] as $deck) {
         if ($deck['id'] === $deckId && $deck['vocabulary']) {
@@ -63,7 +63,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <link rel="apple-touch-icon" href="/assets/icon-192.png?v=4">
     <link rel="manifest" href="/manifest.webmanifest?v=4">
     <link rel="stylesheet" href="/assets/app.css?v=12">
-    <script defer src="/assets/app.js?v=14"></script>
+    <script defer src="/assets/app.js?v=15"></script>
 </head>
 <body class="<?= $account === null ? 'guest' : 'signed-in' ?>">
 <?php if ($account === null): ?>
@@ -358,8 +358,8 @@ if ($view === 'create' && !isset($_POST['type'])) {
                     </label>
                     <label>Kartentyp
                         <select name="type">
+                            <option value="vocabulary" <?= $selectedType === 'vocabulary' ? 'selected' : '' ?>>Vokabeln</option>
                             <option value="topic" <?= $selectedType === 'topic' ? 'selected' : '' ?>>Wissensfragen</option>
-                            <option value="vocabulary" <?= $selectedType === 'vocabulary' ? 'selected' : '' ?>>Vokabeln · Deutsch → Fremdsprache</option>
                             <option value="test" <?= $selectedType === 'test' ? 'selected' : '' ?>>Schülertest</option>
                         </select>
                     </label>
