@@ -37,6 +37,7 @@ function celebrateReview() {
 
 class Study {
   static SELECTOR = "[data-study]";
+  static NEXT_AUDIO_KEY = "bruno-next-audio";
 
   constructor($root) {
     this.$root = $root;
@@ -129,6 +130,8 @@ class Study {
     this.$submit = this.$form.querySelector('button[type="submit"]');
     this.$next = this.$root.querySelector("[data-next-card]");
     let recording;
+    let cancelCapture;
+    window.addEventListener("pagehide", () => cancelCapture?.());
 
     this.$textAnswer.addEventListener("click", () => {
       this.$form.hidden = false;
@@ -161,12 +164,24 @@ class Study {
       }
       let stream;
       let context;
+      let discarded = false;
+      cancelCapture = () => {
+        discarded = true;
+        if (recording?.state === "recording") recording.stop();
+        for (let track of stream?.getTracks() ?? []) track.stop();
+      };
       this.setBusy(true);
       this.$feedback.hidden = true;
       try {
         stream = await navigator.mediaDevices.getUserMedia({
           audio: { channelCount: 1 },
         });
+        if (discarded) {
+          cancelCapture();
+          cancelCapture = undefined;
+          this.setBusy(false);
+          return;
+        }
         context = new AudioContext();
         recording = new MediaRecorder(stream);
         let chunks = [];
@@ -182,6 +197,11 @@ class Study {
           this.$record.disabled = true;
           let payload;
           try {
+            if (discarded) {
+              $recordStatus.textContent = "";
+              this.setBusy(false);
+              return;
+            }
             let input = await new Blob(chunks, {
               type: recording.mimeType,
             }).arrayBuffer();
@@ -245,8 +265,9 @@ class Study {
             this.setBusy(false);
           } finally {
             await context.close();
+            cancelCapture = undefined;
           }
-          if (payload) {
+          if (payload && !discarded) {
             this.grade(payload);
           }
         });
@@ -260,6 +281,7 @@ class Study {
         $recordStatus.textContent = "Aufnahme läuft (maximal 20 Sekunden).";
         this.$record.disabled = false;
       } catch {
+        cancelCapture = undefined;
         for (let track of stream?.getTracks() ?? []) {
           track.stop();
         }
@@ -271,6 +293,9 @@ class Study {
         this.setBusy(false);
       }
     });
+    if (this.canRecord && nextAudioPage === window.location.href) {
+      this.$record.click();
+    }
   }
 
   setBusy(busy) {
@@ -305,13 +330,32 @@ class Study {
         ? `Erkannt: „${result.transcript}“. `
         : "";
       this.$feedback.textContent = `Bewertung gespeichert: ${result.ratingLabel}. ${transcript}${result.feedback}`;
+      let $nextCard = this.$next.querySelector("a");
       if (Number.isInteger(result.remaining)) {
         let $remaining = document.querySelector("[data-study-remaining]");
         $remaining.textContent = result.remaining;
         if (result.remaining === 0) {
-          this.$next.querySelector("a").textContent = "Fertig";
+          $nextCard.textContent = "Fertig";
         }
         if (result.rating >= 3) celebrateReview();
+      }
+      if (payload.has("voice") && result.remaining !== 0) {
+        $nextCard.addEventListener("click", (event) => {
+          if (
+            event.defaultPrevented ||
+            event.ctrlKey ||
+            event.metaKey ||
+            event.shiftKey ||
+            event.altKey
+          ) {
+            return;
+          }
+          try {
+            sessionStorage.setItem(Study.NEXT_AUDIO_KEY, $nextCard.href);
+          } catch {
+            // Browsers that block storage can still record manually after navigation.
+          }
+        });
       }
       this.reveal();
       this.$next.hidden = false;
@@ -470,6 +514,14 @@ $syncShortcut?.addEventListener("submit", async (event) => {
   $feedback.textContent = message;
   $submit.disabled = false;
 });
+
+let nextAudioPage;
+try {
+  nextAudioPage = sessionStorage.getItem(Study.NEXT_AUDIO_KEY);
+  sessionStorage.removeItem(Study.NEXT_AUDIO_KEY);
+} catch {
+  nextAudioPage = null;
+}
 
 for (let Module of [Study, Editor, MediaStatus]) {
   for (let $element of document.querySelectorAll(Module.SELECTOR)) {
