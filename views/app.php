@@ -64,11 +64,11 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <link rel="icon" type="image/svg+xml" href="/assets/icon.svg?v=4">
     <link rel="apple-touch-icon" href="/assets/icon-192.png?v=4">
     <link rel="manifest" href="/manifest.webmanifest?v=4">
-    <link rel="stylesheet" href="/assets/app.css?v=23">
+    <link rel="stylesheet" href="/assets/app.css?v=24">
     <?php if ($view === 'home' && $account !== null): ?>
         <script defer src="/assets/canvas-confetti-1.9.4.js"></script>
     <?php endif; ?>
-    <script defer src="/assets/app.js?v=25"></script>
+    <script defer src="/assets/app.js?v=26"></script>
 </head>
 <body class="<?= $account === null ? 'guest' : 'signed-in' ?>">
 <?php if ($account === null): ?>
@@ -151,7 +151,8 @@ if ($view === 'create' && !isset($_POST['type'])) {
                 <p id="install-help" class="small muted" hidden>Browsermenü: „App installieren“. iOS: „Zum Home-Bildschirm“.</p>
             </div>
         </aside>
-        <main class="workspace" id="main" tabindex="-1" <?= ($data['celebrate'] ?? false) ? 'data-celebrate' : '' ?>>
+        <main class="workspace<?= in_array($view, ['home', 'study'], strict: true) && isset($data['card']) ? ' study-workspace' : '' ?>"
+            id="main" tabindex="-1" <?= ($data['celebrate'] ?? false) ? 'data-celebrate' : '' ?>>
             <?php if ($flash !== ''): ?><p class="notice" role="status"><?= escape($flash) ?></p><?php endif; ?>
             <?php if ($errorMessage !== ''): ?><p class="notice error" role="alert"><?= escape($errorMessage) ?></p><?php endif; ?>
 
@@ -619,7 +620,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                         <?php if (!$daily): ?><p class="eyebrow">Wiederholen</p><?php endif; ?>
                         <h1><?= escape($data['name']) ?></h1>
                         <?php if ($card && $data['vocabulary']): ?>
-                            <p class="small muted"><?= $data['reversed'] ? 'Rückseite zuerst' : 'Vorderseite zuerst' ?></p>
+                            <p class="small muted"><?= $data['reversed'] ? '(Rückseite)' : 'Vorderseite zuerst' ?></p>
                         <?php endif; ?>
                     </div>
                     <?php if ($daily): ?>
@@ -644,38 +645,27 @@ if ($view === 'create' && !isset($_POST['type'])) {
                     $imageState = $card['imageState'];
                     $imagePending = in_array($imageState, PENDING_MEDIA_STATES, strict: true);
                     ?>
-                    <div data-study <?= $daily ? 'class="daily-review"' : '' ?>>
+                    <div class="study" data-study>
                         <article class="panel flashcard">
-                            <p class="question preline"><?= escape($card['question']) ?></p>
-                            <?php if ($card['questionMedia']): ?>
-                                <div class="card-media"><?php $cardMedia($card['questionMedia'], $deckId, $card['id']); ?></div>
+                            <?php if ($data['hintLetter'] !== ''): ?>
+                                <button type="button" class="button secondary icon-button" aria-label="Tipp anzeigen" title="Tipp anzeigen" aria-controls="study-hint" data-study-hint <?= $data['hintUsed'] ? 'disabled' : '' ?>>
+                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6m-5 3h4M9 15v-1c0-.8-.5-1.3-1-1.8a6 6 0 1 1 8 0c-.5.5-1 1-1 1.8v1"/></svg>
+                                </button>
                             <?php endif; ?>
-                            <div class="inline-actions page-actions<?= $daily ? ' daily-actions' : '' ?>" data-answer-actions hidden>
-                                <button type="button" class="button primary" aria-controls="solution" aria-expanded="false" data-reveal>Aufdecken</button>
-                                <?php if ($canGrade): ?>
-                                    <button type="button" class="button primary" data-record hidden>Sprechen</button>
+                            <div class="flashcard-prompt">
+                                <p class="question preline"><?= escape($card['question']) ?></p>
+                                <?php if ($card['questionMedia']): ?>
+                                    <div class="card-media"><?php $cardMedia($card['questionMedia'], $deckId, $card['id']); ?></div>
                                 <?php endif; ?>
                                 <?php if ($data['hintLetter'] !== ''): ?>
-                                    <button type="button" class="button secondary icon-button" aria-label="Tipp anzeigen" title="Tipp anzeigen" aria-controls="study-hint" data-study-hint <?= $data['hintUsed'] ? 'disabled' : '' ?>>
-                                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6m-5 3h4M9 15v-1c0-.8-.5-1.3-1-1.8a6 6 0 1 1 8 0c-.5.5-1 1-1 1.8v1"/></svg>
-                                    </button>
+                                    <p id="study-hint" class="small muted study-status" role="status"><?= $data['hintUsed'] ? 'Tipp: ' . escape($data['hintLetter']) . ' · Höchstens „Gut“ möglich.' : '' ?></p>
                                 <?php endif; ?>
                             </div>
-                            <?php if ($data['hintLetter'] !== ''): ?>
-                                <p id="study-hint" class="small muted study-status" role="status"><?= $data['hintUsed'] ? 'Tipp: ' . escape($data['hintLetter']) . ' · Höchstens „Gut“ möglich.' : '' ?></p>
-                            <?php endif; ?>
                             <?php if ($canGrade): ?>
-                                <form method="post" class="form-grid answer-form" data-grade hidden>
-                                    <?php $hidden(verb: 'grade-answer', fields: $reviewFields); ?>
-                                    <textarea name="answer" aria-label="Antwort" rows="2" maxlength="1500" required></textarea>
-                                    <button class="button primary" type="submit">Los</button>
-                                </form>
-                                <p class="small muted" data-record-status role="status"></p>
                                 <div class="notice" data-feedback role="status" hidden></div>
                             <?php endif; ?>
-                            <section id="solution" class="solution" tabindex="-1" hidden>
-                                <p class="eyebrow">Lösung</p>
-                                <div class="inline-actions">
+                            <section id="solution" class="solution" aria-label="Lösung" tabindex="-1" hidden>
+                                <div class="solution-answer">
                                     <p class="answer preline" data-speech-text><?= escape($card['answer']) ?></p>
                                     <?php if ($card['answer'] !== ''): ?>
                                         <button type="button" class="button secondary icon-button" aria-label="Lösung anhören" title="Lösung anhören" data-speak="<?= escape($data['speechLanguage']) ?>" hidden>
@@ -707,19 +697,33 @@ if ($view === 'create' && !isset($_POST['type'])) {
                                 <?php endif; ?>
                             </section>
                         </article>
-                        <div class="inline-actions page-actions" data-next-card hidden>
-                            <a class="button primary" href="<?= $studyUrl ?>">Weiter</a>
-                        </div>
-                        <form class="panel rating-form" method="post" aria-label="Antwort bewerten" data-ratings hidden>
-                            <?php $hidden(verb: 'answer', fields: $reviewFields); ?>
-                            <div class="ratings">
+                        <div class="study-controls">
+                            <div data-answer-actions hidden>
+                                <?php if ($canGrade): ?>
+                                    <p class="small muted" data-record-status role="status"></p>
+                                <?php endif; ?>
+                                <button type="button" class="button primary" aria-controls="solution" aria-expanded="false" data-reveal>Aufdecken</button>
+                                <?php if ($canGrade): ?>
+                                    <button type="button" class="button primary" data-record hidden>Sprechen</button>
+                                    <form method="post" class="form-grid" data-grade hidden>
+                                        <?php $hidden(verb: 'grade-answer', fields: $reviewFields); ?>
+                                        <textarea name="answer" aria-label="Antwort" rows="2" maxlength="1500" required></textarea>
+                                        <button class="button primary" type="submit">Los</button>
+                                    </form>
+                                <?php endif; ?>
+                            </div>
+                            <div data-next-card hidden>
+                                <a class="button primary" href="<?= $studyUrl ?>">Weiter</a>
+                            </div>
+                            <form class="ratings" method="post" aria-label="Antwort bewerten" data-ratings hidden>
+                                <?php $hidden(verb: 'answer', fields: $reviewFields); ?>
                                 <?php foreach (REVIEW_RATINGS as $rating => $text): ?>
                                     <button type="submit" name="rating" value="<?= $rating ?>" <?= $rating === 4 && $data['hintUsed'] ? 'disabled' : '' ?>>
                                         <?= $text ?><span><?= escape($card['intervals'][$rating - 1] ?? '') ?></span>
                                     </button>
                                 <?php endforeach; ?>
-                            </div>
-                        </form>
+                            </form>
+                        </div>
                         <noscript><p class="notice">Zum Aufdecken und Bewerten benötigst du JavaScript.</p></noscript>
                     </div>
                 <?php endif; ?>

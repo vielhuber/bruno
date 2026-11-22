@@ -391,8 +391,8 @@ class Study {
     this.$solution.hidden = false;
     this.$reveal.setAttribute("aria-expanded", "true");
     this.$actions.hidden = true;
-    if (this.$form) {
-      this.$form.hidden = true;
+    if (this.$hint) {
+      this.$hint.hidden = true;
     }
     this.$solution.focus();
   }
