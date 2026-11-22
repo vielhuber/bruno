@@ -323,7 +323,6 @@ def generate(col, owner, request):
             note.tags = ['bruno_vocab' if request['vocabulary'] else 'bruno']
             note.fields[1] = note_back(back, {
                 'hint': item['hint'],
-                'mnemonicWord': item.get('mnemonicWord', ''),
                 'imageJob': {'state': 'queued', 'prompt': item['imagePrompt']},
             }) if request['vocabulary'] else back
             notes.append(AddNoteRequest(note, deck_id))
