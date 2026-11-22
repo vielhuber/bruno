@@ -339,14 +339,11 @@ class Study {
       if (Number.isInteger(result.remaining)) {
         let $remaining = document.querySelector("[data-study-remaining]");
         $remaining.textContent = result.remaining;
-        $remaining.parentElement.toggleAttribute(
-          "data-near-finish",
-          result.remaining > 0 && result.remaining <= 2,
-        );
+        $remaining.parentElement.dataset.remaining = result.remaining;
         if (result.remaining === 0) {
           $nextCard.textContent = "Fertig";
         }
-        if (result.rating >= 3) celebrateReview();
+        if (result.rating === 4) celebrateReview();
       }
       if (payload.has("voice") && result.remaining !== 0) {
         $nextCard.addEventListener("click", (event) => {

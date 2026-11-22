@@ -562,7 +562,7 @@ try {
             if ($feedback !== null) {
                 respond($feedback + ['ratingLabel' => REVIEW_RATINGS[$rating]] + ($saved ?? []));
             }
-            if ($daily && $rating >= 3) {
+            if ($daily && $rating === 4) {
                 $_SESSION['dailyCelebration'] = true;
             }
             go($daily ? 'home' : 'study', $deckId);

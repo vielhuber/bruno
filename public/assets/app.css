@@ -156,11 +156,11 @@ img, video, audio { max-width: 100%; }
 .daily-header h1 { font-size: clamp(1.45rem, 4vw, 2.35rem); }
 .daily-counter { flex: none; padding: 5px 10px; border-radius: 10px; background: var(--accent-surface); color: var(--accent-hover); font-size: .85rem; white-space: nowrap; }
 .daily-counter strong { font-size: 1.2rem; font-variant-numeric: tabular-nums; }
-.daily-counter[data-near-finish] { background: var(--positive-surface); color: var(--positive); }
+.daily-counter:is([data-remaining="1"], [data-remaining="2"]) { background: var(--positive-surface); color: var(--positive); }
 @media (prefers-reduced-motion: no-preference) {
-    .daily-counter[data-near-finish] { animation: finish-pulse 950ms ease-in-out 3; }
+    .daily-counter:not([data-remaining="0"]) { animation: progress-pulse 1.8s ease-in-out infinite; }
 }
-@keyframes finish-pulse { 50% { transform: scale(1.08); box-shadow: 0 0 0 5px #a9ebce35; } }
+@keyframes progress-pulse { 50% { transform: scale(1.08); box-shadow: 0 0 0 5px #c4b3ff35; } }
 .daily-actions .primary { flex: 1; }
 .daily-actions .icon-button { flex: 0 0 44px; }
 .daily-complete { max-width: 760px; display: grid; justify-items: center; gap: 12px; text-align: center; padding-block: clamp(25px, 6vw, 52px); }
