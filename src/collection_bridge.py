@@ -10,8 +10,8 @@ from anki.collection import SyncOutput
 from anki.sync_pb2 import SyncAuth
 
 from collection_store import (
-    Rejected, answer_card, card_content, collection, deck_list, generate, image_progress, lesson, media_path,
-    metadata, owned_deck, queue_video, retry_image, save_deck, study, writable_deck,
+    Rejected, answer_card, card_content, collection, deck_list, ensure_deck_name_available, generate,
+    image_progress, lesson, media_path, metadata, owned_deck, queue_video, retry_image, save_deck, study, writable_deck,
 )
 from media_jobs import VIDEO_ENDPOINT, VIDEO_USD_PER_CLIP, run_jobs
 
@@ -93,6 +93,8 @@ def dispatch(directory, request):
             return {'assigned': deck['name']}
         if action == 'list':
             return deck_list(col, owner)
+        if action == 'check-deck-title':
+            return ensure_deck_name_available(col, request['title'])
         if action == 'generate':
             return generate(col, owner, request)
         deck = owned_deck(col, request['deck'], owner)

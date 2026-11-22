@@ -249,11 +249,16 @@ def save_note(col, note, back, meta):
     col.update_note(note)
 
 
+def ensure_deck_name_available(col, title):
+    if col.decks.by_name(title):
+        raise Rejected('Der Name ist in Anki bereits belegt. Bitte einen anderen Titel wählen.', 409)
+
+
 def generate(col, owner, request):
     deck_id, title = request['deck'], request['title']
     deck = owned_deck(col, deck_id, owner) if deck_id else None
-    if not deck and col.decks.by_name(title):
-        raise Rejected('Der Name ist in Anki bereits belegt. Bitte einen anderen Titel wählen.', 409)
+    if not deck:
+        ensure_deck_name_available(col, title)
     if deck and (deck['name'] != title or lesson(col, deck)['text'] != request['previousLesson']):
         raise Rejected('Der Stapel wurde seit der Vorschau geändert. Bitte einen neuen Entwurf erstellen.', 409)
     meta = metadata(deck) if deck else {'owner': owner}

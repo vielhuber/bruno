@@ -322,6 +322,9 @@ try {
             if (array_intersect($owned['jobs'] ?? [], ['queued', 'submitting', 'working'])) {
                 throw new AppException('Bitte warten, bis die Medien des Stapels fertig sind.', 409);
             }
+            if ($deckId === 0) {
+                $anki->call('check-deck-title', $request + ['title' => $title]);
+            }
             $documents = uploads('document', [
                 'application/pdf' => 'pdf',
                 'image/jpeg' => 'jpg',
