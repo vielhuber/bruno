@@ -64,7 +64,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <link rel="icon" type="image/svg+xml" href="/assets/icon.svg?v=4">
     <link rel="apple-touch-icon" href="/assets/icon-192.png?v=4">
     <link rel="manifest" href="/manifest.webmanifest?v=4">
-    <link rel="stylesheet" href="/assets/app.css?v=19">
+    <link rel="stylesheet" href="/assets/app.css?v=20">
     <?php if ($view === 'home' && $account !== null): ?>
         <script defer src="/assets/canvas-confetti-1.9.4.js"></script>
     <?php endif; ?>
@@ -118,6 +118,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                         <?php $hidden(verb: 'sync-now'); ?>
                         <button class="button secondary sync-shortcut" type="submit" aria-label="Anki jetzt synchronisieren" title="Anki jetzt synchronisieren" <?= !$settings['sync'] || ($data['sync']['running'] ?? false) ? 'disabled' : '' ?>>
                             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5m5 0a8 8 0 1 0-2.5 5.8"/></svg>
+                            Synchronisieren
                         </button>
                         <span class="small" role="status"></span>
                     </form>
@@ -127,8 +128,8 @@ if ($view === 'create' && !isset($_POST['type'])) {
                     </a>
                 </div>
                 <nav class="sidebar-actions" aria-label="Weitere Funktionen">
-                    <a class="wide" href="<?= $route('decks') ?>" <?= in_array($view, ['decks', 'deck'], strict: true) ? 'aria-current="page"' : '' ?>>Stapel verwalten</a>
-                    <a class="wide" href="<?= $route('users') ?>" <?= $view === 'users' ? 'aria-current="page"' : '' ?>>Benutzer</a>
+                    <a href="<?= $route('decks') ?>" <?= in_array($view, ['decks', 'deck'], strict: true) ? 'aria-current="page"' : '' ?>>Stapel verwalten</a>
+                    <a href="<?= $route('users') ?>" <?= $view === 'users' ? 'aria-current="page"' : '' ?>>Benutzer</a>
                     <a href="<?= $route('backups') ?>" <?= $view === 'backups' ? 'aria-current="page"' : '' ?>>Backups</a>
                     <a href="<?= $route('sync') ?>" <?= $view === 'sync' ? 'aria-current="page"' : '' ?>>Anki-Sync</a>
                     <button type="button" aria-expanded="false" aria-controls="install-help" data-install>App installieren</button>
@@ -236,7 +237,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                                             <img src="<?= $mediaUrl($deckId, $card['image'], $card['id']) ?>" alt="Illustration zur Eselsbrücke" loading="lazy">
                                         <?php endif; ?>
                                         <div>
-                                            <h3>Eselsbrücke</h3><p><?= escape($card['hint']) ?></p>
+                                            <p><?= escape($card['hint']) ?></p>
                                             <?php if ($card['image'] === '' && isset(MEDIA_STAGE_LABELS[$card['imageState']])): ?>
                                                 <p class="small muted">Merkbild: <?= MEDIA_STAGE_LABELS[$card['imageState']] ?></p>
                                             <?php endif; ?>
@@ -489,7 +490,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                                 <div><h3>Vorderseite</h3><p class="preline"><?= escape($card['front']) ?></p></div>
                                 <div><h3>Rückseite</h3><p class="preline"><?= escape($card['back']) ?></p></div>
                                 <?php if ($proposal['vocabulary']): ?>
-                                    <div><h3>Eselsbrücke</h3><p class="preline"><?= escape($card['hint']) ?></p></div>
+                                    <div><p class="preline"><?= escape($card['hint']) ?></p></div>
                                     <div><h3>Bildidee</h3><p class="preline"><?= escape($card['imagePrompt']) ?></p></div>
                                 <?php endif; ?>
                             </article>
@@ -632,7 +633,6 @@ if ($view === 'create' && !isset($_POST['type'])) {
                     ?>
                     <div data-study <?= $daily ? 'class="daily-review"' : '' ?>>
                         <article class="panel flashcard">
-                            <p class="eyebrow">Frage</p>
                             <p class="question preline"><?= escape($card['question']) ?></p>
                             <?php if ($card['questionMedia']): ?>
                                 <div class="card-media"><?php $cardMedia($card['questionMedia'], $deckId, $card['id']); ?></div>
@@ -661,8 +661,8 @@ if ($view === 'create' && !isset($_POST['type'])) {
                             <?php if ($canGrade): ?>
                                 <form id="text-answer" method="post" class="form-grid answer-form" data-grade hidden>
                                     <?php $hidden(verb: 'grade-answer', fields: $reviewFields); ?>
-                                    <label>Deine Antwort <textarea name="answer" rows="2" maxlength="1500" required></textarea></label>
-                                    <button class="button primary" type="submit">Mit KI prüfen</button>
+                                    <textarea name="answer" aria-label="Antwort" rows="2" maxlength="1500" required></textarea>
+                                    <button class="button primary" type="submit">Los</button>
                                 </form>
                                 <p class="small muted" data-record-status role="status"><?= $daily ? '' : 'Audio und Text gehen zur KI-Prüfung. Die Bewertung wird automatisch gespeichert.' ?></p>
                                 <div class="notice" data-feedback role="status" hidden></div>
@@ -686,7 +686,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                                         <?php if ($card['image'] !== '' || $imagePending): ?>
                                             <img <?= $card['image'] !== '' ? 'src="' . $mediaUrl($deckId, $card['image'], $card['id']) . '"' : 'hidden' ?> alt="Illustration zur Eselsbrücke" loading="lazy" data-mnemonic-image>
                                         <?php endif; ?>
-                                        <div><h3>Eselsbrücke</h3><p><?= escape($card['hint']) ?></p>
+                                        <div><p><?= escape($card['hint']) ?></p>
                                         <?php if ($card['image'] === '' && isset(MEDIA_STAGE_LABELS[$imageState])): ?>
                                             <p class="small muted" role="status">Merkbild: <span data-media-stage><?= MEDIA_STAGE_LABELS[$imageState] ?></span></p>
                                         <?php endif; ?>
@@ -702,7 +702,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                             </section>
                         </article>
                         <div class="inline-actions page-actions" data-next-card hidden>
-                            <a class="button primary" href="<?= $studyUrl ?>">Nächste Karte</a>
+                            <a class="button primary" href="<?= $studyUrl ?>">Weiter</a>
                         </div>
                         <form class="panel rating-form" method="post" aria-label="Antwort bewerten" data-ratings hidden>
                             <?php $hidden(verb: 'answer', fields: $reviewFields); ?>
