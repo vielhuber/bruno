@@ -1,3 +1,40 @@
+function celebrateReview() {
+  if (
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
+    !Element.prototype.animate
+  ) {
+    return;
+  }
+  let $confetti = document.createElement("div");
+  $confetti.className = "confetti";
+  $confetti.setAttribute("aria-hidden", "true");
+  document.body.append($confetti);
+  let spread = Math.min(window.innerWidth / 2, 380);
+  for (let index = 0; index < 42; index++) {
+    let $piece = document.createElement("i");
+    $confetti.append($piece);
+    let distance = (Math.random() * 2 - 1) * spread;
+    let height = 55 + Math.random() * 170;
+    let turn = (Math.random() * 2 - 1) * 300;
+    $piece.animate(
+      [
+        { transform: "translate(0, 0)", opacity: 1 },
+        {
+          offset: 0.36,
+          transform: `translate(${distance * 0.7}px, ${-height}px) rotate(${turn}deg)`,
+          opacity: 1,
+        },
+        {
+          transform: `translate(${distance}px, ${height * 1.8}px) rotate(${turn * 2}deg)`,
+          opacity: 0,
+        },
+      ],
+      { duration: 950 + Math.random() * 450, fill: "forwards" },
+    );
+  }
+  window.setTimeout(() => $confetti.remove(), 1500);
+}
+
 class Study {
   static SELECTOR = "[data-study]";
 
@@ -88,6 +125,7 @@ class Study {
     this.$answer = this.$form.elements.namedItem("answer");
     this.$textAnswer = this.$root.querySelector("[data-text-answer]");
     this.$record = this.$root.querySelector("[data-record]");
+    let $recordLabel = this.$record.querySelector("[data-record-label]");
     this.$submit = this.$form.querySelector('button[type="submit"]');
     this.$next = this.$root.querySelector("[data-next-card]");
     let recording;
@@ -140,7 +178,7 @@ class Study {
           for (let track of stream.getTracks()) {
             track.stop();
           }
-          this.$record.textContent = "Audioaufnahme";
+          $recordLabel.textContent = "Audioaufnahme";
           this.$record.disabled = true;
           let payload;
           try {
@@ -218,7 +256,7 @@ class Study {
             recording.stop();
           }
         }, 20000);
-        this.$record.textContent = "Aufnahme stoppen";
+        $recordLabel.textContent = "Aufnahme stoppen";
         $recordStatus.textContent = "Aufnahme läuft (maximal 20 Sekunden).";
         this.$record.disabled = false;
       } catch {
@@ -267,6 +305,14 @@ class Study {
         ? `Erkannt: „${result.transcript}“. `
         : "";
       this.$feedback.textContent = `Bewertung gespeichert: ${result.ratingLabel}. ${transcript}${result.feedback}`;
+      if (Number.isInteger(result.remaining)) {
+        let $remaining = document.querySelector("[data-study-remaining]");
+        $remaining.textContent = result.remaining;
+        if (result.remaining === 0) {
+          this.$next.querySelector("a").textContent = "Fertig";
+        }
+        if (result.rating >= 3) celebrateReview();
+      }
       this.reveal();
       this.$next.hidden = false;
     } catch (error) {
@@ -430,6 +476,16 @@ for (let Module of [Study, Editor, MediaStatus]) {
     new Module($element).ready();
   }
 }
+
+if (document.querySelector("[data-celebrate]")) celebrateReview();
+
+let $menu = document.querySelector("[data-mobile-menu]");
+$menu?.addEventListener("click", () => {
+  $menu.setAttribute(
+    "aria-expanded",
+    String($menu.getAttribute("aria-expanded") !== "true"),
+  );
+});
 
 document.querySelector("[data-generate-batch]")?.requestSubmit();
 

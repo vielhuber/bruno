@@ -126,19 +126,19 @@ $endBrowserLogin = static function () use ($setLoginCookie): never {
  * @param array{owner: string, deck: int} $request
  * @return array<string, mixed>
  */
-function study(AnkiBridge $anki, array $request): array
+function study(AnkiBridge $anki, array $request, bool $daily = false): array
 {
-    $data = $anki->call('study', $request);
+    $data = $anki->call($daily ? 'daily-study' : 'study', $request);
     $data['reversed'] = false;
     $data['hintUsed'] = false;
     $data['hintLetter'] = '';
     $data['speechLanguage'] = 'de';
-    $deck = $request['deck'];
-    if (!$data['vocabulary']) {
-        unset($_SESSION['reviewBlocks'][$deck]);
+    if ($data['card'] === null) {
         return $data;
     }
-    if ($data['card'] === null) {
+    $deck = $data['deck'];
+    if (!$data['vocabulary']) {
+        unset($_SESSION['reviewBlocks'][$deck]);
         return $data;
     }
 
@@ -492,7 +492,7 @@ try {
             }
             $anki->call('retry-image', $request + ['card' => (int) input($_POST, key: 'card')]);
             $_SESSION['flash'] = 'Merkbild erneut beauftragt.';
-            go('study', $deckId);
+            go($view === 'home' ? 'home' : 'study', $deckId);
         }
 
         if ($verb === 'grade') {
@@ -548,7 +548,10 @@ try {
             if ($hintUsed && $rating === 4) {
                 throw new AppException('Mit Tipp kannst du höchstens „Gut“ speichern. Bitte lade die Karte neu.', 422);
             }
-            $anki->call('answer', $request + $values + ['rating' => $rating, 'elapsed' => $elapsed]);
+            $daily = $view === 'home';
+            $saved = $anki->call('answer', $request + $values + [
+                'rating' => $rating, 'elapsed' => $elapsed, 'daily' => $daily && $feedback !== null,
+            ]);
             unset($_SESSION['studyHints'][$deckId][$values['card']]);
             if (isset($_SESSION['reviewBlocks'][$deckId])) {
                 $_SESSION['reviewBlocks'][$deckId]['answered']++;
@@ -557,9 +560,12 @@ try {
                 }
             }
             if ($feedback !== null) {
-                respond($feedback + ['ratingLabel' => REVIEW_RATINGS[$rating]]);
+                respond($feedback + ['ratingLabel' => REVIEW_RATINGS[$rating]] + ($saved ?? []));
             }
-            go('study', $deckId);
+            if ($daily && $rating >= 3) {
+                $_SESSION['dailyCelebration'] = true;
+            }
+            go($daily ? 'home' : 'study', $deckId);
         }
 
         throw new AppException('Unbekannte Anfrage.', 400);
@@ -628,7 +634,8 @@ try {
         'login', 'profile' => [],
         'users' => ['users' => $credentials->accounts()],
         'preview' => ['draft' => $_SESSION['deckDraft']],
-        'home', 'decks', 'create', 'learn', 'review' => ['decks' => $anki->call('list', $request)],
+        'home' => study($anki, ['deck' => $_SESSION['dailyDeck'] ?? 0] + $request, daily: true),
+        'decks', 'create', 'learn', 'review' => ['decks' => $anki->call('list', $request)],
         'deck' => $anki->call('deck-cards', $request),
         'lesson' => ['lesson' => $anki->call('lesson', $request)],
         'study' => study($anki, $request),
@@ -636,6 +643,12 @@ try {
         'sync' => ['sync' => $sync->status()],
         default => throw new AppException('Diese Seite gibt es nicht.', 404),
     };
+    if ($view === 'home') {
+        $deckId = $data['deck'];
+        $_SESSION['dailyDeck'] = $deckId;
+        $data['celebrate'] = $_SESSION['dailyCelebration'] ?? false;
+        unset($_SESSION['dailyCelebration']);
+    }
 } catch (AppException | PDOException $error) {
     $errorMessage = $error instanceof AppException ? $error->getMessage() : 'Die Anmeldung ist momentan nicht verfügbar.';
     http_response_code($error instanceof AppException ? ($error->getCode() ?: 400) : 503);

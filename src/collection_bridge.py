@@ -94,6 +94,15 @@ def dispatch(directory, request):
             return {'assigned': deck['name']}
         if action == 'list':
             return deck_list(col, owner)
+        if action == 'daily-study':
+            decks = [deck for deck in deck_list(col, owner) if deck['due'] > 0]
+            remaining = sum(deck['due'] for deck in decks)
+            decks.sort(key=lambda deck: deck['id'] != request['deck'])
+            for item in decks:
+                result = study(col, col.decks.get(item['id']))
+                if result['card'] is not None:
+                    return result | {'remaining': remaining}
+            return {'deck': 0, 'card': None, 'remaining': 0}
         if action == 'check-deck-title':
             return ensure_deck_name_available(col, request['title'])
         if action == 'generate':
@@ -117,13 +126,12 @@ def dispatch(directory, request):
             col.decks.remove([deck['id']])
             return None
         if action == 'study':
-            meta = metadata(deck)
-            return {
-                'name': deck['name'], 'card': study(col, deck),
-                'vocabulary': meta.get('vocabulary') is True, 'focus': meta.get('focus', ''),
-            }
+            return study(col, deck)
         if action == 'answer':
-            return answer_card(col, deck, request)
+            answer_card(col, deck, request)
+            if request.get('daily'):
+                return {'remaining': sum(item['due'] for item in deck_list(col, owner))}
+            return None
         if action == 'lesson':
             material = lesson(col, deck)
             material['estimatedVideoCost'] = VIDEO_USD_PER_CLIP

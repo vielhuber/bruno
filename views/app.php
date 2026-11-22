@@ -64,8 +64,8 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <link rel="icon" type="image/svg+xml" href="/assets/icon.svg?v=4">
     <link rel="apple-touch-icon" href="/assets/icon-192.png?v=4">
     <link rel="manifest" href="/manifest.webmanifest?v=4">
-    <link rel="stylesheet" href="/assets/app.css?v=16">
-    <script defer src="/assets/app.js?v=19"></script>
+    <link rel="stylesheet" href="/assets/app.css?v=17">
+    <script defer src="/assets/app.js?v=20"></script>
 </head>
 <body class="<?= $account === null ? 'guest' : 'signed-in' ?>">
 <?php if ($account === null): ?>
@@ -90,6 +90,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <div class="app-shell">
         <aside class="sidebar">
             <a class="brand" href="/"><img class="brand-icon" src="/assets/icon.svg?v=4" width="41" height="41" alt=""> bruno</a>
+            <button type="button" class="button secondary mobile-menu" aria-controls="account-menu" aria-expanded="false" data-mobile-menu>Menü</button>
             <nav aria-label="Hauptnavigation">
                 <a href="/" <?= $view === 'home' ? 'aria-current="page"' : '' ?>>
                     <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg>
@@ -108,7 +109,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                     Wiederholen
                 </a>
             </nav>
-            <div class="sidebar-foot">
+            <div class="sidebar-foot" id="account-menu">
                 <div class="sidebar-profile">
                     <form class="sidebar-sync" method="post" action="<?= $route('sync') ?>" data-sync-shortcut>
                         <?php $hidden(verb: 'sync-now'); ?>
@@ -136,29 +137,20 @@ if ($view === 'create' && !isset($_POST['type'])) {
                 <p id="install-help" class="small muted" hidden>Browsermenü: „App installieren“. iOS: „Zum Home-Bildschirm“.</p>
             </div>
         </aside>
-        <main class="workspace" id="main" tabindex="-1">
+        <main class="workspace" id="main" tabindex="-1" <?= ($data['celebrate'] ?? false) ? 'data-celebrate' : '' ?>>
             <?php if ($flash !== ''): ?><p class="notice" role="status"><?= escape($flash) ?></p><?php endif; ?>
             <?php if ($errorMessage !== ''): ?><p class="notice error" role="alert"><?= escape($errorMessage) ?></p><?php endif; ?>
 
             <?php switch ($view):
-                case 'home':
                 case 'decks':
                 case 'learn':
                 case 'review': ?>
                 <?php
-                    $overview = $view === 'home';
                     $management = $view === 'decks';
                     $review = $view === 'review';
                     $decks = $data['decks'];
                     ?>
                 <header class="screen-header"><h1><?= escape($label) ?></h1></header>
-                <?php if ($overview): ?>
-                    <dl class="stats" aria-label="Lernstand">
-                        <div class="stat-accent"><dt>Jetzt bereit</dt><dd><?= array_sum(array_column($decks, 'due')) ?></dd></div>
-                        <div><dt>Davon neu</dt><dd><?= array_sum(array_column($decks, 'new')) ?></dd></div>
-                        <div><dt>Stapel</dt><dd><?= count($decks) ?></dd></div>
-                    </dl>
-                <?php endif; ?>
                 <?php if (!$decks): ?>
                     <p class="panel muted">Noch keine Stapel.</p>
                 <?php endif; ?>
@@ -172,9 +164,9 @@ if ($view === 'create' && !isset($_POST['type'])) {
                                     <?php if ($review && !$notDue): ?><span class="badge"><?= $deck['due'] ?> fällig</span><?php endif; ?>
                                 </div>
                                 <h2>
-                                    <?php if ($overview || $management): ?><a href="<?= $route('deck', $deck['id']) ?>"><?php endif; ?>
+                                    <?php if ($management): ?><a href="<?= $route('deck', $deck['id']) ?>"><?php endif; ?>
                                     <?= escape($deck['name']) ?>
-                                    <?php if ($overview || $management): ?></a><?php endif; ?>
+                                    <?php if ($management): ?></a><?php endif; ?>
                                 </h2>
                                 <p class="muted small"><?= $deck['total'] ?> <?= $deck['total'] === 1 ? 'Karte' : 'Karten' ?></p>
                                 <div class="inline-actions">
@@ -203,7 +195,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                                     <?php if ($notDue): ?>
                                         <span class="badge">Keine Karten fällig</span>
                                     <?php endif; ?>
-                                    <?php if (!$overview && !$management && !$notDue): ?>
+                                    <?php if (!$management && !$notDue): ?>
                                         <a class="button primary" href="<?= $route($review ? 'study' : 'lesson', $deck['id']) ?>"><?= escape($label) ?></a>
                                     <?php endif; ?>
                                 </div>
@@ -587,17 +579,37 @@ if ($view === 'create' && !isset($_POST['type'])) {
                     <a class="button primary" href="<?= $route('study', $deckId) ?>">Jetzt wiederholen <span aria-hidden="true">→</span></a>
                 </div>
             <?php break;
+                case 'home':
                 case 'study': ?>
-                <?php $card = $data['card']; ?>
-                <a class="back-link" href="<?= $route('review') ?>">← Wiederholen</a>
-                <header class="screen-header">
+                <?php
+                    $daily = $view === 'home';
+                    $card = $data['card'];
+                    $studyUrl = $daily ? '/' : $route('study', $deckId);
+                    ?>
+                <?php if ($daily && !$card): ?>
+                    <article class="panel daily-complete">
+                        <img src="/assets/bruno-pause.svg" width="400" height="264" alt="Bruno döst in seiner Hängematte">
+                        <h1>Alles geschafft.</h1>
+                        <p class="muted">0 Karten offen. Bruno macht Pause.</p>
+                    </article>
+                    <?php break; ?>
+                <?php endif; ?>
+                <?php if (!$daily): ?>
+                    <a class="back-link" href="<?= $route('review') ?>">← Wiederholen</a>
+                <?php endif; ?>
+                <header class="screen-header<?= $daily ? ' daily-header' : '' ?>">
                     <div>
-                        <p class="eyebrow">Wiederholen</p><h1><?= escape($data['name']) ?></h1>
+                        <p class="eyebrow"><?= $daily ? 'Deine Lernrunde' : 'Wiederholen' ?></p><h1><?= escape($data['name']) ?></h1>
                         <?php if ($card && $data['vocabulary']): ?>
                             <p class="small muted"><?= $data['reversed'] ? 'Rückseite zuerst' : 'Vorderseite zuerst' ?></p>
                         <?php endif; ?>
                     </div>
-                    <a class="button secondary" href="<?= $route('lesson', $deckId) ?>">Lernen</a>
+                    <?php if ($daily): ?>
+                        <p class="daily-counter" role="status"><strong data-study-remaining><?= $data['remaining'] ?></strong> offen</p>
+                    <?php endif; ?>
+                    <?php if (!$daily): ?>
+                        <a class="button secondary" href="<?= $route('lesson', $deckId) ?>">Lernen</a>
+                    <?php endif; ?>
                 </header>
                 <?php if (!$card): ?>
                     <article class="panel empty"><h2>Keine Karten fällig.</h2>
@@ -614,19 +626,25 @@ if ($view === 'create' && !isset($_POST['type'])) {
                     $imageState = $card['imageState'];
                     $imagePending = in_array($imageState, PENDING_MEDIA_STATES, strict: true);
                     ?>
-                    <div data-study>
+                    <div data-study <?= $daily ? 'class="daily-review"' : '' ?>>
                         <article class="panel flashcard">
                             <p class="eyebrow">Frage</p>
                             <p class="question preline"><?= escape($card['question']) ?></p>
                             <?php if ($card['questionMedia']): ?>
                                 <div class="card-media"><?php $cardMedia($card['questionMedia'], $deckId, $card['id']); ?></div>
                             <?php endif; ?>
-                            <div class="inline-actions page-actions" data-answer-actions>
+                            <div class="inline-actions page-actions<?= $daily ? ' daily-actions' : '' ?>" data-answer-actions>
+                                <button type="button" class="button primary" aria-controls="solution" aria-expanded="false" data-reveal><?= $daily ? 'Aufdecken' : 'Direkt aufdecken' ?></button>
                                 <?php if ($canGrade): ?>
-                                    <button type="button" class="button secondary" data-record>Audioaufnahme</button>
-                                    <button type="button" class="button secondary" aria-controls="text-answer" aria-expanded="false" data-text-answer>Direkteingabe</button>
+                                    <button type="button" class="button secondary<?= $daily ? ' icon-button' : '' ?>" title="Audioantwort" data-record>
+                                        <?php if ($daily): ?><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11v1a7 7 0 0 0 14 0v-1m-7 8v3m-4 0h8"/></svg><?php endif; ?>
+                                        <span<?= $daily ? ' class="visually-hidden"' : '' ?> data-record-label>Audioaufnahme</span>
+                                    </button>
+                                    <button type="button" class="button secondary<?= $daily ? ' icon-button' : '' ?>" title="Direkteingabe" aria-controls="text-answer" aria-expanded="false" data-text-answer>
+                                        <?php if ($daily): ?><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M6 9h2m3 0h2m3 0h2m-12 4h2m3 0h2m3 0h2m-9 3h6"/></svg><?php endif; ?>
+                                        <span<?= $daily ? ' class="visually-hidden"' : '' ?>>Direkteingabe</span>
+                                    </button>
                                 <?php endif; ?>
-                                <button type="button" class="button primary" aria-controls="solution" aria-expanded="false" data-reveal>Direkt aufdecken</button>
                                 <?php if ($data['hintLetter'] !== ''): ?>
                                     <button type="button" class="button secondary icon-button" aria-label="Tipp anzeigen" title="Tipp anzeigen" aria-controls="study-hint" data-study-hint <?= $data['hintUsed'] ? 'disabled' : '' ?>>
                                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6m-5 3h4M9 15v-1c0-.8-.5-1.3-1-1.8a6 6 0 1 1 8 0c-.5.5-1 1-1 1.8v1"/></svg>
@@ -642,7 +660,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                                     <label>Deine Antwort <textarea name="answer" rows="2" maxlength="1500" required></textarea></label>
                                     <button class="button primary" type="submit">Mit KI prüfen</button>
                                 </form>
-                                <p class="small muted" data-record-status role="status">Audio und Text gehen zur KI-Prüfung. Die Bewertung wird automatisch gespeichert.</p>
+                                <p class="small muted" data-record-status role="status"><?= $daily ? '' : 'Audio und Text gehen zur KI-Prüfung. Die Bewertung wird automatisch gespeichert.' ?></p>
                                 <div class="notice" data-feedback role="status" hidden></div>
                             <?php endif; ?>
                             <section id="solution" class="solution" tabindex="-1" hidden>
@@ -669,7 +687,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                                             <p class="small muted" role="status">Merkbild: <span data-media-stage><?= MEDIA_STAGE_LABELS[$imageState] ?></span></p>
                                         <?php endif; ?>
                                         <?php if ($settings['ai'] && ($imageState === 'failed' || $imagePending)): ?>
-                                            <form method="post" action="<?= $route('study', $deckId) ?>" data-media-retry <?= $imageState === 'failed' ? '' : 'hidden' ?>>
+                                            <form method="post" action="<?= $studyUrl ?>" data-media-retry <?= $imageState === 'failed' ? '' : 'hidden' ?>>
                                                 <?php $hidden(verb: 'retry-image', fields: $cardFields); ?>
                                                 <button class="button secondary" type="submit">Bild erneut generieren</button>
                                             </form>
@@ -680,7 +698,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                             </section>
                         </article>
                         <div class="inline-actions page-actions" data-next-card hidden>
-                            <a class="button primary" href="<?= $route('study', $deckId) ?>">Nächste Karte</a>
+                            <a class="button primary" href="<?= $studyUrl ?>">Nächste Karte</a>
                         </div>
                         <form class="panel rating-form" method="post" data-ratings hidden>
                             <?php $hidden(verb: 'answer', fields: $reviewFields); ?>

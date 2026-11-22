@@ -112,7 +112,6 @@ def deck_list(col, owner):
             'name': deck['name'],
             'total': node.total_in_deck,
             'due': node.learn_count + node.review_count + node.new_count,
-            'new': node.new_count,
             'vocabulary': meta.get('vocabulary', False),
             'deletable': deck['id'] != DEFAULT_DECK_ID,
         })
@@ -205,18 +204,24 @@ def card_content(card):
 
 
 def study(col, deck):
+    meta = metadata(deck)
+    result = {
+        'deck': deck['id'], 'name': deck['name'], 'card': None,
+        'vocabulary': meta.get('vocabulary') is True, 'focus': meta.get('focus', ''),
+    }
     with selected_deck(col, deck['id']):
         queue = col.sched.get_queued_cards()
         if not queue.cards:
-            return None
+            return result
         queued = queue.cards[0]
         card = col.get_card(queued.card.id)
         if card.did != deck['id']:
             raise Rejected('Die Karte wurde in Anki verschoben. Bitte den Stapel neu öffnen.', 409)
-        return card_content(card) | {
+        result['card'] = card_content(card) | {
             'id': card.id, 'reps': card.reps, 'modified': card.mod,
             'intervals': list(col.sched.describe_next_states(queued.states)),
         }
+    return result
 
 
 def answer_card(col, deck, request):
