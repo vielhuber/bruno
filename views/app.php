@@ -64,7 +64,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <link rel="icon" type="image/svg+xml" href="/assets/icon.svg?v=4">
     <link rel="apple-touch-icon" href="/assets/icon-192.png?v=4">
     <link rel="manifest" href="/manifest.webmanifest?v=4">
-    <link rel="stylesheet" href="/assets/app.css?v=27">
+    <link rel="stylesheet" href="/assets/app.css?v=28">
     <?php if (in_array($view, ['home', 'study'], strict: true) && $account !== null): ?>
         <script defer src="/assets/canvas-confetti-1.9.4.js"></script>
     <?php endif; ?>
@@ -111,33 +111,28 @@ if ($view === 'create' && !isset($_POST['type'])) {
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 5v5h-5M4 19v-5h5m11-4a8 8 0 0 0-14-4m-2 8a8 8 0 0 0 14 4"/></svg>
                     Wiederholen
                 </a>
+                <form class="sidebar-sync" method="post" action="<?= $route('sync') ?>" data-sync-shortcut>
+                    <?php $hidden(verb: 'sync-now'); ?>
+                    <button type="submit" aria-label="Anki jetzt synchronisieren" title="Anki jetzt synchronisieren" <?= !$settings['sync'] || ($data['sync']['running'] ?? false) ? 'disabled' : '' ?>>
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5m5 0a8 8 0 1 0-2.5 5.8"/></svg>
+                        Synchronisieren
+                    </button>
+                    <span class="small" role="status"></span>
+                </form>
                 <?php if ($settings['ai']): ?>
                     <label class="answer-mode" hidden>
                         Antwortmodus
                         <select data-answer-mode="<?= escape($account->id) ?>">
                             <option value="reveal">Aufdecken</option>
-                            <option value="speak">Sprechen</option>
                             <option value="text">Eingeben</option>
+                            <option value="speak">Sprechen</option>
                         </select>
                     </label>
                 <?php endif; ?>
             </nav>
             <div class="sidebar-foot" id="account-menu">
-                <div class="sidebar-profile">
-                    <form class="sidebar-sync" method="post" action="<?= $route('sync') ?>" data-sync-shortcut>
-                        <?php $hidden(verb: 'sync-now'); ?>
-                        <button class="button secondary sync-shortcut" type="submit" aria-label="Anki jetzt synchronisieren" title="Anki jetzt synchronisieren" <?= !$settings['sync'] || ($data['sync']['running'] ?? false) ? 'disabled' : '' ?>>
-                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5m5 0a8 8 0 1 0-2.5 5.8"/></svg>
-                            Synchronisieren
-                        </button>
-                        <span class="small" role="status"></span>
-                    </form>
-                    <a class="account" href="<?= $route('profile') ?>" <?= $view === 'profile' ? 'aria-current="page"' : '' ?>>
-                        <span class="avatar" aria-hidden="true"><?= escape(mb_strtoupper(mb_substr($account->email, start: 0, length: 1))) ?></span>
-                        <span class="small account-email"><?= escape($account->email) ?></span>
-                    </a>
-                </div>
                 <nav class="sidebar-actions" aria-label="Weitere Funktionen">
+                    <a href="<?= $route('profile') ?>" <?= $view === 'profile' ? 'aria-current="page"' : '' ?>><?= escape($account->email) ?></a>
                     <a href="<?= $route('decks') ?>" <?= in_array($view, ['decks', 'deck'], strict: true) ? 'aria-current="page"' : '' ?>>Stapel verwalten</a>
                     <a href="<?= $route('users') ?>" <?= $view === 'users' ? 'aria-current="page"' : '' ?>>Benutzer</a>
                     <a href="<?= $route('backups') ?>" <?= $view === 'backups' ? 'aria-current="page"' : '' ?>>Backups</a>
