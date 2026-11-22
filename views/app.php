@@ -29,6 +29,7 @@ $hidden = static function (string $verb, array $fields = []) use ($csrf): void {
 };
 $label = match ($view) {
     'login' => 'Anmelden',
+    'decks' => 'Stapel verwalten',
     'deck' => $data['name'],
     'create' => 'Stapel erstellen',
     'preview' => 'Kartenvorschau',
@@ -63,7 +64,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <link rel="icon" type="image/svg+xml" href="/assets/icon.svg?v=4">
     <link rel="apple-touch-icon" href="/assets/icon-192.png?v=4">
     <link rel="manifest" href="/manifest.webmanifest?v=4">
-    <link rel="stylesheet" href="/assets/app.css?v=15">
+    <link rel="stylesheet" href="/assets/app.css?v=16">
     <script defer src="/assets/app.js?v=19"></script>
 </head>
 <body class="<?= $account === null ? 'guest' : 'signed-in' ?>">
@@ -90,7 +91,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
         <aside class="sidebar">
             <a class="brand" href="/"><img class="brand-icon" src="/assets/icon.svg?v=4" width="41" height="41" alt=""> bruno</a>
             <nav aria-label="Hauptnavigation">
-                <a href="/" <?= in_array($view, ['home', 'deck'], strict: true) ? 'aria-current="page"' : '' ?>>
+                <a href="/" <?= $view === 'home' ? 'aria-current="page"' : '' ?>>
                     <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg>
                     Übersicht
                 </a>
@@ -122,7 +123,8 @@ if ($view === 'create' && !isset($_POST['type'])) {
                     </a>
                 </div>
                 <nav class="sidebar-actions" aria-label="Weitere Funktionen">
-                    <a class="users-link" href="<?= $route('users') ?>" <?= $view === 'users' ? 'aria-current="page"' : '' ?>>Benutzer</a>
+                    <a class="wide" href="<?= $route('decks') ?>" <?= in_array($view, ['decks', 'deck'], strict: true) ? 'aria-current="page"' : '' ?>>Stapel verwalten</a>
+                    <a class="wide" href="<?= $route('users') ?>" <?= $view === 'users' ? 'aria-current="page"' : '' ?>>Benutzer</a>
                     <a href="<?= $route('backups') ?>" <?= $view === 'backups' ? 'aria-current="page"' : '' ?>>Backups</a>
                     <a href="<?= $route('sync') ?>" <?= $view === 'sync' ? 'aria-current="page"' : '' ?>>Anki-Sync</a>
                     <button type="button" aria-expanded="false" aria-controls="install-help" data-install>App installieren</button>
@@ -140,10 +142,12 @@ if ($view === 'create' && !isset($_POST['type'])) {
 
             <?php switch ($view):
                 case 'home':
+                case 'decks':
                 case 'learn':
                 case 'review': ?>
                 <?php
                     $overview = $view === 'home';
+                    $management = $view === 'decks';
                     $review = $view === 'review';
                     $decks = $data['decks'];
                     ?>
@@ -168,17 +172,17 @@ if ($view === 'create' && !isset($_POST['type'])) {
                                     <?php if ($review && !$notDue): ?><span class="badge"><?= $deck['due'] ?> fällig</span><?php endif; ?>
                                 </div>
                                 <h2>
-                                    <?php if ($overview): ?><a href="<?= $route('deck', $deck['id']) ?>"><?php endif; ?>
+                                    <?php if ($overview || $management): ?><a href="<?= $route('deck', $deck['id']) ?>"><?php endif; ?>
                                     <?= escape($deck['name']) ?>
-                                    <?php if ($overview): ?></a><?php endif; ?>
+                                    <?php if ($overview || $management): ?></a><?php endif; ?>
                                 </h2>
                                 <p class="muted small"><?= $deck['total'] ?> <?= $deck['total'] === 1 ? 'Karte' : 'Karten' ?></p>
                                 <div class="inline-actions">
-                                    <?php if ($overview): ?>
+                                    <?php if ($management): ?>
                                         <?php $editing = $errorMessage !== '' && $verb === 'rename-deck' && $deckId === $deck['id']; ?>
                                         <details <?= $editing ? 'open' : '' ?>>
                                             <summary class="button secondary">Bearbeiten</summary>
-                                            <form class="form-grid page-actions" method="post" action="/">
+                                            <form class="form-grid page-actions" method="post" action="<?= $route('decks') ?>">
                                                 <?php $hidden(verb: 'rename-deck', fields: ['deck' => $deck['id']]); ?>
                                                 <label>Stapelname <input name="title" value="<?= escape($editing ? input($_POST, key: 'title') : $deck['name']) ?>" maxlength="100" required></label>
                                                 <button class="button secondary" type="submit">Namen speichern</button>
@@ -188,7 +192,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                                         <?php if ($deck['deletable']): ?>
                                             <details <?= $errorMessage !== '' && $verb === 'delete-deck' && $deckId === $deck['id'] ? 'open' : '' ?>>
                                                 <summary class="button secondary">Löschen</summary>
-                                                <form class="form-grid page-actions" method="post" action="/">
+                                                <form class="form-grid page-actions" method="post" action="<?= $route('decks') ?>">
                                                     <?php $hidden(verb: 'delete-deck', fields: ['deck' => $deck['id']]); ?>
                                                     <p class="small muted">Der Stapel und seine Karten werden aus Anki gelöscht.</p>
                                                     <button class="button secondary" type="submit">Stapel endgültig löschen</button>
@@ -199,7 +203,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                                     <?php if ($notDue): ?>
                                         <span class="badge">Keine Karten fällig</span>
                                     <?php endif; ?>
-                                    <?php if (!$overview && !$notDue): ?>
+                                    <?php if (!$overview && !$management && !$notDue): ?>
                                         <a class="button primary" href="<?= $route($review ? 'study' : 'lesson', $deck['id']) ?>"><?= escape($label) ?></a>
                                     <?php endif; ?>
                                 </div>
@@ -210,7 +214,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
             <?php break;
                 case 'deck': ?>
                 <?php $cardCount = count($data['cards']); ?>
-                <a class="back-link" href="/">← Übersicht</a>
+                <a class="back-link" href="<?= $route('decks') ?>">← Stapel verwalten</a>
                 <header class="screen-header">
                     <div><h1><?= escape($label) ?></h1><p class="small muted"><?= $cardCount ?> <?= $cardCount === 1 ? 'Karte' : 'Karten' ?></p></div>
                 </header>

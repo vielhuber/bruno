@@ -332,7 +332,7 @@ try {
         if ($verb === 'rename-deck') {
             $anki->call('rename-deck', $request + ['title' => $readDeckTitle($_POST)]);
             $_SESSION['flash'] = 'Stapel umbenannt.';
-            go();
+            go('decks');
         }
 
         if ($verb === 'delete-deck') {
@@ -342,7 +342,7 @@ try {
                 unset($_SESSION['deckDraft']);
             }
             $_SESSION['flash'] = 'Stapel gelöscht.';
-            go();
+            go('decks');
         }
 
         if ($verb === 'generate') {
@@ -628,7 +628,7 @@ try {
         'login', 'profile' => [],
         'users' => ['users' => $credentials->accounts()],
         'preview' => ['draft' => $_SESSION['deckDraft']],
-        'home', 'create', 'learn', 'review' => ['decks' => $anki->call('list', $request)],
+        'home', 'decks', 'create', 'learn', 'review' => ['decks' => $anki->call('list', $request)],
         'deck' => $anki->call('deck-cards', $request),
         'lesson' => ['lesson' => $anki->call('lesson', $request)],
         'study' => study($anki, $request),
@@ -649,7 +649,7 @@ try {
     }
     $managingDeck = in_array($verb, ['rename-deck', 'delete-deck'], strict: true);
     if ($account instanceof Account && ($managingDeck || $verb === 'generate' || ($view === 'create' && $_POST === []))) {
-        $view = $managingDeck ? 'home' : 'create';
+        $view = $managingDeck ? 'decks' : 'create';
         try {
             $data['decks'] = $anki->call('list', $request);
         } catch (AppException) {
