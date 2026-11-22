@@ -29,6 +29,7 @@ $hidden = static function (string $verb, array $fields = []) use ($csrf): void {
 };
 $label = match ($view) {
     'login' => 'Anmelden',
+    'deck' => $data['name'],
     'create' => 'Stapel erstellen',
     'preview' => 'Kartenvorschau',
     'review', 'study' => 'Wiederholen',
@@ -89,7 +90,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
         <aside class="sidebar">
             <a class="brand" href="/"><img class="brand-icon" src="/assets/icon.svg?v=4" width="41" height="41" alt=""> bruno</a>
             <nav aria-label="Hauptnavigation">
-                <a href="/" <?= $view === 'home' ? 'aria-current="page"' : '' ?>>
+                <a href="/" <?= in_array($view, ['home', 'deck'], strict: true) ? 'aria-current="page"' : '' ?>>
                     <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg>
                     Übersicht
                 </a>
@@ -166,7 +167,11 @@ if ($view === 'create' && !isset($_POST['type'])) {
                                     <span class="deck-icon<?= $deck['vocabulary'] ? ' vocabulary' : '' ?>" aria-hidden="true"><?= $deck['vocabulary'] ? 'Aa' : '▤' ?></span>
                                     <?php if ($review && !$notDue): ?><span class="badge"><?= $deck['due'] ?> fällig</span><?php endif; ?>
                                 </div>
-                                <h2><?= escape($deck['name']) ?></h2>
+                                <h2>
+                                    <?php if ($overview): ?><a href="<?= $route('deck', $deck['id']) ?>"><?php endif; ?>
+                                    <?= escape($deck['name']) ?>
+                                    <?php if ($overview): ?></a><?php endif; ?>
+                                </h2>
                                 <p class="muted small"><?= $deck['total'] ?> <?= $deck['total'] === 1 ? 'Karte' : 'Karten' ?></p>
                                 <div class="inline-actions">
                                     <?php if ($overview): ?>
@@ -198,6 +203,47 @@ if ($view === 'create' && !isset($_POST['type'])) {
                                         <a class="button primary" href="<?= $route($review ? 'study' : 'lesson', $deck['id']) ?>"><?= escape($label) ?></a>
                                     <?php endif; ?>
                                 </div>
+                            </article>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+            <?php break;
+                case 'deck': ?>
+                <?php $cardCount = count($data['cards']); ?>
+                <a class="back-link" href="/">← Übersicht</a>
+                <header class="screen-header">
+                    <div><h1><?= escape($label) ?></h1><p class="small muted"><?= $cardCount ?> <?= $cardCount === 1 ? 'Karte' : 'Karten' ?></p></div>
+                </header>
+                <?php if ($cardCount === 0): ?>
+                    <p class="panel muted">Noch keine Karten.</p>
+                <?php endif; ?>
+                <?php if ($cardCount > 0): ?>
+                    <div class="deck-grid">
+                        <?php foreach ($data['cards'] as $index => $card): ?>
+                            <article class="panel form-grid">
+                                <h2>Karte <?= $index + 1 ?></h2>
+                                <?php foreach (['question' => 'Vorderseite', 'answer' => 'Rückseite'] as $face => $faceLabel): ?>
+                                    <section>
+                                        <h3 class="eyebrow"><?= $faceLabel ?></h3>
+                                        <p class="preline"><?= escape($card[$face]) ?></p>
+                                        <?php if ($card[$face . 'Media']): ?>
+                                            <div class="card-media"><?php $cardMedia($card[$face . 'Media'], $deckId, $card['id']); ?></div>
+                                        <?php endif; ?>
+                                    </section>
+                                <?php endforeach; ?>
+                                <?php if ($card['hint'] !== '' || $card['image'] !== ''): ?>
+                                    <div class="mnemonic">
+                                        <?php if ($card['image'] !== ''): ?>
+                                            <img src="<?= $mediaUrl($deckId, $card['image'], $card['id']) ?>" alt="Illustration zur Eselsbrücke" loading="lazy">
+                                        <?php endif; ?>
+                                        <div>
+                                            <h3>Eselsbrücke</h3><p><?= escape($card['hint']) ?></p>
+                                            <?php if ($card['image'] === '' && isset(MEDIA_STAGE_LABELS[$card['imageState']])): ?>
+                                                <p class="small muted">Merkbild: <?= MEDIA_STAGE_LABELS[$card['imageState']] ?></p>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
                             </article>
                         <?php endforeach; ?>
                     </div>

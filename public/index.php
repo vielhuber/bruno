@@ -600,6 +600,7 @@ try {
         'users' => ['users' => $credentials->accounts()],
         'preview' => ['draft' => $_SESSION['deckDraft']],
         'home', 'create', 'learn', 'review' => ['decks' => $anki->call('list', $request)],
+        'deck' => $anki->call('deck-cards', $request),
         'lesson' => ['lesson' => $anki->call('lesson', $request)],
         'study' => study($anki, $request),
         'backups' => ['backups' => $backupHistory->entries()],

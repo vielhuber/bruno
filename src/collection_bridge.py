@@ -99,8 +99,14 @@ def dispatch(directory, request):
         if action == 'generate':
             return generate(col, owner, request)
         deck = owned_deck(col, request['deck'], owner)
-        if action in {'rename-deck', 'delete-deck'} and '::' in deck['name']:
+        if action in {'deck-cards', 'rename-deck', 'delete-deck'} and '::' in deck['name']:
             raise Rejected('Stapel nicht gefunden.', 404)
+        if action == 'deck-cards':
+            card_ids = col.db.list('select id from cards where did = ? order by id', deck['id'])
+            return {
+                'name': deck['name'],
+                'cards': [card_content(col.get_card(card_id)) | {'id': card_id} for card_id in card_ids],
+            }
         if action == 'rename-deck':
             ensure_deck_name_available(col, request['title'], deck['id'])
             col.decks.rename(deck['id'], request['title'])
