@@ -552,6 +552,9 @@ try {
             $saved = $anki->call('answer', $request + $values + [
                 'rating' => $rating, 'elapsed' => $elapsed, 'daily' => $daily && $feedback !== null,
             ]);
+            if ($daily) {
+                $_SESSION['dailyAnswered'] = true;
+            }
             unset($_SESSION['studyHints'][$deckId][$values['card']]);
             if (isset($_SESSION['reviewBlocks'][$deckId])) {
                 $_SESSION['reviewBlocks'][$deckId]['answered']++;
@@ -648,6 +651,10 @@ try {
         $_SESSION['dailyDeck'] = $deckId;
         $data['celebrate'] = $_SESSION['dailyCelebration'] ?? false;
         unset($_SESSION['dailyCelebration']);
+        if ($data['card'] === null) {
+            $data['syncAfterCompletion'] = $settings['sync'] && isset($_SESSION['dailyAnswered']);
+            unset($_SESSION['dailyAnswered']);
+        }
     }
 } catch (AppException | PDOException $error) {
     $errorMessage = $error instanceof AppException ? $error->getMessage() : 'Die Anmeldung ist momentan nicht verfügbar.';

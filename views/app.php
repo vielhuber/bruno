@@ -64,11 +64,11 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <link rel="icon" type="image/svg+xml" href="/assets/icon.svg?v=4">
     <link rel="apple-touch-icon" href="/assets/icon-192.png?v=4">
     <link rel="manifest" href="/manifest.webmanifest?v=4">
-    <link rel="stylesheet" href="/assets/app.css?v=21">
+    <link rel="stylesheet" href="/assets/app.css?v=22">
     <?php if ($view === 'home' && $account !== null): ?>
         <script defer src="/assets/canvas-confetti-1.9.4.js"></script>
     <?php endif; ?>
-    <script defer src="/assets/app.js?v=23"></script>
+    <script defer src="/assets/app.js?v=24"></script>
 </head>
 <body class="<?= $account === null ? 'guest' : 'signed-in' ?>">
 <?php if ($account === null): ?>
@@ -595,6 +595,9 @@ if ($view === 'create' && !isset($_POST['type'])) {
                         <img src="/assets/bruno-pause.svg" width="400" height="264" alt="Bruno döst in seiner Hängematte">
                         <h1>Alles geschafft.</h1>
                         <p class="muted">0 Karten offen. Bruno macht Pause.</p>
+                        <?php if ($data['syncAfterCompletion']): ?>
+                            <p class="small muted" role="status" data-completion-sync></p>
+                        <?php endif; ?>
                     </article>
                     <?php break; ?>
                 <?php endif; ?>

@@ -490,22 +490,20 @@ $syncForm?.addEventListener("submit", () => {
   $submit.textContent = "Synchronisierung läuft …";
 });
 
-let $syncShortcut = document.querySelector("[data-sync-shortcut]");
-$syncShortcut?.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  let $submit = $syncShortcut.querySelector('button[type="submit"]');
+async function syncNow($form, $feedback) {
+  let $submit = $form.querySelector('button[type="submit"]');
   if ($submit.disabled) return;
-  let $feedback = $syncShortcut.querySelector('[role="status"]');
   $submit.disabled = true;
-  $syncShortcut.dataset.state = "pending";
+  $form.dataset.state = "pending";
   $feedback.textContent = "Synchronisierung läuft …";
   let state = "error";
   let message = "Synchronisierung fehlgeschlagen.";
   try {
-    let response = await fetch($syncShortcut.action, {
+    let response = await fetch($form.action, {
       method: "POST",
       headers: { Accept: "application/json" },
-      body: new FormData($syncShortcut),
+      body: new FormData($form),
+      keepalive: true,
     });
     let result = await response.json();
     if (response.ok && result.synced === true) {
@@ -516,10 +514,19 @@ $syncShortcut?.addEventListener("submit", async (event) => {
   } catch {
     message = "Kein Sync-Ergebnis erhalten.";
   }
-  $syncShortcut.dataset.state = state;
+  $form.dataset.state = state;
+  $feedback.dataset.state = state;
   $feedback.textContent = message;
   $submit.disabled = false;
+}
+
+let $syncShortcut = document.querySelector("[data-sync-shortcut]");
+$syncShortcut?.addEventListener("submit", (event) => {
+  event.preventDefault();
+  syncNow($syncShortcut, $syncShortcut.querySelector('[role="status"]'));
 });
+let $completionSync = document.querySelector("[data-completion-sync]");
+if ($syncShortcut && $completionSync) syncNow($syncShortcut, $completionSync);
 
 let nextAudioPage;
 try {
