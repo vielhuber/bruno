@@ -63,8 +63,8 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <link rel="icon" type="image/svg+xml" href="/assets/icon.svg?v=4">
     <link rel="apple-touch-icon" href="/assets/icon-192.png?v=4">
     <link rel="manifest" href="/manifest.webmanifest?v=4">
-    <link rel="stylesheet" href="/assets/app.css?v=14">
-    <script defer src="/assets/app.js?v=17"></script>
+    <link rel="stylesheet" href="/assets/app.css?v=15">
+    <script defer src="/assets/app.js?v=18"></script>
 </head>
 <body class="<?= $account === null ? 'guest' : 'signed-in' ?>">
 <?php if ($account === null): ?>
@@ -605,7 +605,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                     $cardFields = ['deck' => $deckId, 'card' => $card['id'], 'reps' => $card['reps'], 'modified' => $card['modified']];
                     $shown = time();
                     $signature = hash_hmac('sha256', implode(':', [...$cardFields, $shown]), $_SESSION['reviewSecret']);
-                    $reviewFields = $cardFields + ['shown' => $shown, 'signature' => $signature];
+                    $reviewFields = $cardFields + ['shown' => $shown, 'signature' => $signature, 'reversed' => (int) $data['reversed']];
                     $canGrade = $settings['ai'] && $card['question'] !== '' && $card['answer'] !== '';
                     $imageState = $card['imageState'];
                     $imagePending = in_array($imageState, PENDING_MEDIA_STATES, strict: true);
@@ -623,10 +623,18 @@ if ($view === 'create' && !isset($_POST['type'])) {
                                     <button type="button" class="button secondary" aria-controls="text-answer" aria-expanded="false" data-text-answer>Direkteingabe</button>
                                 <?php endif; ?>
                                 <button type="button" class="button primary" aria-controls="solution" aria-expanded="false" data-reveal>Direkt aufdecken</button>
+                                <?php if ($data['hintLetter'] !== ''): ?>
+                                    <button type="button" class="button secondary icon-button" aria-label="Tipp anzeigen" title="Tipp anzeigen" aria-controls="study-hint" data-study-hint <?= $data['hintUsed'] ? 'disabled' : '' ?>>
+                                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6m-5 3h4M9 15v-1c0-.8-.5-1.3-1-1.8a6 6 0 1 1 8 0c-.5.5-1 1-1 1.8v1"/></svg>
+                                    </button>
+                                <?php endif; ?>
                             </div>
+                            <?php if ($data['hintLetter'] !== ''): ?>
+                                <p id="study-hint" class="small muted study-status" role="status"><?= $data['hintUsed'] ? 'Tipp: ' . escape($data['hintLetter']) . ' · Höchstens „Gut“ möglich.' : '' ?></p>
+                            <?php endif; ?>
                             <?php if ($canGrade): ?>
                                 <form id="text-answer" method="post" class="form-grid answer-form" data-grade hidden>
-                                    <?php $hidden(verb: 'grade-answer', fields: $reviewFields + ['reversed' => (int) $data['reversed']]); ?>
+                                    <?php $hidden(verb: 'grade-answer', fields: $reviewFields); ?>
                                     <label>Deine Antwort <textarea name="answer" rows="2" maxlength="1500" required></textarea></label>
                                     <button class="button primary" type="submit">Mit KI prüfen</button>
                                 </form>
@@ -666,7 +674,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                             <h2>Antwort selbst bewerten</h2>
                             <div class="ratings">
                                 <?php foreach (REVIEW_RATINGS as $rating => $text): ?>
-                                    <button type="submit" name="rating" value="<?= $rating ?>">
+                                    <button type="submit" name="rating" value="<?= $rating ?>" <?= $rating === 4 && $data['hintUsed'] ? 'disabled' : '' ?>>
                                         <?= $text ?><span><?= escape($card['intervals'][$rating - 1] ?? '') ?></span>
                                     </button>
                                 <?php endforeach; ?>

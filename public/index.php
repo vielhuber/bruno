@@ -130,6 +130,8 @@ function study(AnkiBridge $anki, array $request): array
 {
     $data = $anki->call('study', $request);
     $data['reversed'] = false;
+    $data['hintUsed'] = false;
+    $data['hintLetter'] = '';
     $deck = $request['deck'];
     if (!$data['vocabulary']) {
         unset($_SESSION['reviewBlocks'][$deck]);
@@ -145,12 +147,16 @@ function study(AnkiBridge $anki, array $request): array
     ];
     $block = $_SESSION['reviewBlocks'][$deck];
     $data['reversed'] = intdiv($block['answered'], REVIEW_BLOCK_SIZE) === $block['reverseBlock'];
+    $card = $data['card'];
     if ($data['reversed']) {
-        $card = $data['card'];
         $data['card']['question'] = $card['answer'];
         $data['card']['answer'] = $card['question'];
         $data['card']['questionMedia'] = $card['answerMedia'];
         $data['card']['answerMedia'] = $card['questionMedia'];
+    }
+    $data['hintUsed'] = ($_SESSION['studyHints'][$deck][$card['id']] ?? null) === [$card['reps'], $card['modified']];
+    if (preg_match('/\p{L}\p{M}*/u', $data['card']['answer'], $letter) === 1) {
+        $data['hintLetter'] = $letter[0];
     }
 
     return $data;
@@ -324,7 +330,7 @@ try {
 
         if ($verb === 'delete-deck') {
             $anki->call('delete-deck', $request);
-            unset($_SESSION['reviewBlocks'][$deckId]);
+            unset($_SESSION['reviewBlocks'][$deckId], $_SESSION['studyHints'][$deckId]);
             if (($_SESSION['deckDraft']['payload']['deck'] ?? null) === $deckId) {
                 unset($_SESSION['deckDraft']);
             }
@@ -486,7 +492,7 @@ try {
             throw new AppException('Die Lernrunde wurde aktualisiert. Bitte die Seite neu laden.', 409);
         }
 
-        if (in_array($verb, ['answer', 'grade-answer'], strict: true)) {
+        if (in_array($verb, ['answer', 'grade-answer', 'study-hint'], strict: true)) {
             $values = [
                 'card' => (int) input($_POST, key: 'card'),
                 'reps' => (int) input($_POST, key: 'reps'),
@@ -500,7 +506,9 @@ try {
             $elapsed = time() - $values['shown'];
             $feedback = null;
             $rating = (int) input($_POST, key: 'rating');
-            if ($verb === 'grade-answer') {
+            $cardVersion = [$values['reps'], $values['modified']];
+            $hintUsed = ($_SESSION['studyHints'][$deckId][$values['card']] ?? null) === $cardVersion;
+            if ($verb !== 'answer') {
                 $presentation = study($anki, $request);
                 $card = $presentation['card'];
                 if (
@@ -508,6 +516,13 @@ try {
                     || (int) $presentation['reversed'] !== (int) input($_POST, key: 'reversed')
                 ) {
                     throw new AppException('Diese Karte ist nicht mehr aktuell. Bitte die Lernrunde neu öffnen.', 409);
+                }
+                if ($verb === 'study-hint') {
+                    if ($presentation['hintLetter'] === '') {
+                        throw new AppException('Für diese Karte ist kein Tipp verfügbar.', 422);
+                    }
+                    $_SESSION['studyHints'][$deckId][$values['card']] = $cardVersion;
+                    respond(['letter' => $presentation['hintLetter']]);
                 }
                 if ($card['question'] === '' || $card['answer'] === '') {
                     throw new AppException('Bei dieser Karte kannst du deine Antwort nur selbst bewerten.', 422);
@@ -517,13 +532,17 @@ try {
                 if (($answer !== '') === ($voice !== null)) {
                     throw new AppException('Bitte entweder eine Antwort schreiben oder aufnehmen.', 422);
                 }
-                $feedback = $gateway->grade($card['question'], $card['answer'], $answer, $voice);
+                $feedback = $gateway->grade($card['question'], $card['answer'], $answer, $voice, $hintUsed);
                 $rating = $feedback['rating'];
             }
             if (!isset(REVIEW_RATINGS[$rating])) {
                 throw new AppException('Bitte die Lernrunde neu öffnen.', 422);
             }
+            if ($hintUsed && $rating === 4) {
+                throw new AppException('Mit Tipp kannst du höchstens „Gut“ speichern. Bitte lade die Karte neu.', 422);
+            }
             $anki->call('answer', $request + $values + ['rating' => $rating, 'elapsed' => $elapsed]);
+            unset($_SESSION['studyHints'][$deckId][$values['card']]);
             if (isset($_SESSION['reviewBlocks'][$deckId])) {
                 $_SESSION['reviewBlocks'][$deckId]['answered']++;
                 if ($_SESSION['reviewBlocks'][$deckId]['answered'] === REVIEW_BLOCK_SIZE * REVIEW_CYCLE_BLOCKS) {
@@ -613,7 +632,7 @@ try {
 } catch (AppException | PDOException $error) {
     $errorMessage = $error instanceof AppException ? $error->getMessage() : 'Die Anmeldung ist momentan nicht verfügbar.';
     http_response_code($error instanceof AppException ? ($error->getCode() ?: 400) : 503);
-    if ($ajaxSync || in_array($verb, ['grade', 'grade-answer'], strict: true) || $view === 'media-status') {
+    if ($ajaxSync || in_array($verb, ['grade', 'grade-answer', 'study-hint'], strict: true) || $view === 'media-status') {
         respond(['error' => $errorMessage]);
     }
     if ($view === 'media') {

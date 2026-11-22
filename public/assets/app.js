@@ -12,6 +12,8 @@ class Study {
     this.$ratings = this.$root.querySelector("[data-ratings]");
     this.$form = this.$root.querySelector("[data-grade]");
     this.$feedback = this.$root.querySelector("[data-feedback]");
+    this.$hint = this.$root.querySelector("[data-study-hint]");
+    this.hintUsed = this.$hint?.disabled ?? false;
     let $recordStatus = this.$root.querySelector("[data-record-status]");
     this.$reveal.addEventListener("click", () => {
       this.reveal();
@@ -19,6 +21,32 @@ class Study {
       if (this.$feedback) {
         this.$feedback.hidden = true;
         $recordStatus.textContent = "";
+      }
+    });
+    this.$hint?.addEventListener("click", async () => {
+      let $status = this.$root.querySelector("#study-hint");
+      this.setBusy(true);
+      try {
+        let payload = new FormData(this.$ratings);
+        payload.set("verb", "study-hint");
+        let response = await fetch(window.location.href, {
+          method: "POST",
+          body: payload,
+        });
+        let result = await response.json();
+        if (!response.ok) {
+          $status.textContent = result.error;
+          return;
+        }
+        this.hintUsed = true;
+        this.$ratings.querySelector('[name="rating"][value="4"]').disabled =
+          true;
+        $status.textContent = `Tipp: ${result.letter} · Höchstens „Gut“ möglich.`;
+      } catch {
+        $status.textContent =
+          "Der Tipp konnte nicht angezeigt werden. Bitte erneut versuchen.";
+      } finally {
+        this.setBusy(false);
       }
     });
     if (!this.$form) {
@@ -176,9 +204,13 @@ class Study {
   }
 
   setBusy(busy) {
+    this.$reveal.disabled = busy;
+    if (this.$hint) {
+      this.$hint.disabled = busy || this.hintUsed;
+    }
+    if (!this.$form) return;
     this.$record.disabled = busy || !this.canRecord;
     this.$textAnswer.disabled = busy;
-    this.$reveal.disabled = busy;
     this.$submit.disabled = busy;
     this.$answer.readOnly = busy;
   }

@@ -60,7 +60,7 @@ img, video, audio { max-width: 100%; }
 .sidebar nav :where(a, button) { color: var(--subtle); background: transparent; text-decoration: none; text-align: start; display: flex; align-items: center; gap: 11px; width: 100%; min-height: 46px; padding: 8px 11px; border: 1px solid transparent; border-radius: 10px; font-size: .94rem; font-weight: 650; }
 .sidebar nav :where(a, button):hover { color: var(--text); background: var(--raised); }
 .sidebar nav a[aria-current] { background: var(--accent-surface); border-color: #463764; color: var(--accent); }
-.sidebar nav svg, .sync-shortcut svg { width: 19px; height: 19px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linejoin: round; stroke-linecap: round; }
+.sidebar nav svg, .sync-shortcut svg, .icon-button svg { width: 19px; height: 19px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linejoin: round; stroke-linecap: round; }
 .sidebar-foot { margin-top: auto; display: grid; gap: 8px; min-width: 0; border-top: 1px solid var(--line); padding-top: 15px; }
 .sidebar-profile { display: grid; gap: 8px; }
 .sidebar-sync { display: flex; min-width: 0; align-items: center; }
@@ -92,6 +92,7 @@ img, video, audio { max-width: 100%; }
 .button.secondary { background: var(--raised); color: var(--text); border-color: var(--control); }
 .button.secondary:hover:not(:disabled) { background: var(--accent-surface); color: var(--accent-hover); }
 .button.sync-shortcut { flex: 0 0 44px; padding: 0; }
+.button.icon-button { width: 44px; padding: 0; }
 .sidebar-sync[data-state="success"] .button.sync-shortcut { background: var(--positive-surface); color: var(--positive); }
 
 .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0 0 29px; }
@@ -161,11 +162,12 @@ img, video, audio { max-width: 100%; }
 .answer-form, .rating-form { max-width: 760px; margin-top: 12px; }
 .flashcard [data-feedback], .flashcard [data-record-status] { margin: 12px 0; }
 .flashcard [data-record-status]:empty { display: none; }
+.flashcard .study-status:not(:empty) { margin: 10px 0; }
 .rating-form h2 { font-size: 1.23rem; margin-bottom: 11px; }
 .ratings { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .ratings button { min-height: 54px; padding: 4px 2px; display: grid; place-content: center; gap: 1px; border: 1px solid var(--control); border-radius: 9px; background: var(--raised); color: var(--text); font-size: .86rem; font-weight: 720; }
 .ratings button span { font-size: .74rem; font-weight: 530; }
-.ratings button:hover { background: var(--accent-surface); border-color: var(--accent); }
+.ratings button:hover:not(:disabled) { background: var(--accent-surface); border-color: var(--accent); }
 
 .guest { background: radial-gradient(ellipse at 50% 0%, #252139, transparent 58%), var(--paper); }
 .guest-main { min-height: 100dvh; display: grid; place-items: center; padding: 20px; }
