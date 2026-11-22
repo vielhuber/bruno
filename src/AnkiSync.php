@@ -23,6 +23,14 @@ final class AnkiSync
     }
 
     /**
+     * Check for a saved login without opening the collection.
+     */
+    public function isConfigured(): bool
+    {
+        return is_file($this->directory . '/anki-sync.key');
+    }
+
+    /**
      * Check for an active run without opening or waiting for the collection.
      *
      * @return array{interval: int, lastAttempt: ?int, lastSuccess: ?int, result: ?string, error: ?string, running: bool, configured: bool}
@@ -40,7 +48,7 @@ final class AnkiSync
             fclose($lock);
         }
 
-        return $this->read() + ['running' => $running, 'configured' => is_file($this->directory . '/anki-sync.key')];
+        return $this->read() + ['running' => $running, 'configured' => $this->isConfigured()];
     }
 
     /**
@@ -66,7 +74,7 @@ final class AnkiSync
      */
     public function run(bool $manual = false, bool $initialUpload = false): array
     {
-        if (!is_file($this->directory . '/anki-sync.key')) {
+        if (!$this->isConfigured()) {
             if ($manual) {
                 throw new AppException('AnkiWeb ist noch nicht eingerichtet.', 503);
             }

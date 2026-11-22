@@ -323,12 +323,19 @@ class Editor {
   }
 }
 
-let $syncForm = document.querySelector("[data-sync]");
-$syncForm?.addEventListener("submit", () => {
-  let $submit = $syncForm.querySelector('button[type="submit"]');
-  $submit.disabled = true;
-  $submit.textContent = "Synchronisierung läuft …";
-});
+for (let $syncForm of document.querySelectorAll("[data-sync]")) {
+  $syncForm.addEventListener("submit", () => {
+    let $submit = $syncForm.querySelector('button[type="submit"]');
+    let label = "Synchronisierung läuft …";
+    $submit.disabled = true;
+    if ($submit.hasAttribute("aria-label")) {
+      $submit.setAttribute("aria-label", label);
+      $submit.title = label;
+      return;
+    }
+    $submit.textContent = label;
+  });
+}
 
 for (let Module of [Study, Editor, MediaStatus]) {
   for (let $element of document.querySelectorAll(Module.SELECTOR)) {

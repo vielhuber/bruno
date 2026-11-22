@@ -62,8 +62,8 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <link rel="icon" type="image/svg+xml" href="/assets/icon.svg?v=4">
     <link rel="apple-touch-icon" href="/assets/icon-192.png?v=4">
     <link rel="manifest" href="/manifest.webmanifest?v=4">
-    <link rel="stylesheet" href="/assets/app.css?v=12">
-    <script defer src="/assets/app.js?v=15"></script>
+    <link rel="stylesheet" href="/assets/app.css?v=13">
+    <script defer src="/assets/app.js?v=16"></script>
 </head>
 <body class="<?= $account === null ? 'guest' : 'signed-in' ?>">
 <?php if ($account === null): ?>
@@ -107,10 +107,18 @@ if ($view === 'create' && !isset($_POST['type'])) {
                 </a>
             </nav>
             <div class="sidebar-foot">
-                <a class="account" href="<?= $route('profile') ?>" <?= $view === 'profile' ? 'aria-current="page"' : '' ?>>
-                    <span class="avatar" aria-hidden="true"><?= escape(mb_strtoupper(mb_substr($account->email, start: 0, length: 1))) ?></span>
-                    <span class="small account-email"><?= escape($account->email) ?></span>
-                </a>
+                <div class="sidebar-profile">
+                    <form method="post" action="<?= $route('sync') ?>" data-sync>
+                        <?php $hidden(verb: 'sync-now'); ?>
+                        <button class="button secondary sync-shortcut" type="submit" aria-label="Anki jetzt synchronisieren" title="Anki jetzt synchronisieren" <?= !$settings['sync'] || ($data['sync']['running'] ?? false) ? 'disabled' : '' ?>>
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5m5 0a8 8 0 1 0-2.5 5.8"/></svg>
+                        </button>
+                    </form>
+                    <a class="account" href="<?= $route('profile') ?>" <?= $view === 'profile' ? 'aria-current="page"' : '' ?>>
+                        <span class="avatar" aria-hidden="true"><?= escape(mb_strtoupper(mb_substr($account->email, start: 0, length: 1))) ?></span>
+                        <span class="small account-email"><?= escape($account->email) ?></span>
+                    </a>
+                </div>
                 <nav class="sidebar-actions" aria-label="Weitere Funktionen">
                     <a class="users-link" href="<?= $route('users') ?>" <?= $view === 'users' ? 'aria-current="page"' : '' ?>>Benutzer</a>
                     <a href="<?= $route('backups') ?>" <?= $view === 'backups' ? 'aria-current="page"' : '' ?>>Backups</a>

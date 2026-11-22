@@ -58,7 +58,7 @@ $flash = $_SESSION['flash'] ?? '';
 $verb = '';
 $view = 'home';
 $deckId = 0;
-$settings = ['ai' => $config['ai_key'] !== '', 'fal' => $config['fal_key'] !== ''];
+$settings = ['ai' => $config['ai_key'] !== '', 'fal' => $config['fal_key'] !== '', 'sync' => $sync->isConfigured()];
 $errorMessage = '';
 $data = [];
 
