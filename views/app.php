@@ -64,11 +64,11 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <link rel="icon" type="image/svg+xml" href="/assets/icon.svg?v=4">
     <link rel="apple-touch-icon" href="/assets/icon-192.png?v=4">
     <link rel="manifest" href="/manifest.webmanifest?v=4">
-    <link rel="stylesheet" href="/assets/app.css?v=24">
+    <link rel="stylesheet" href="/assets/app.css?v=25">
     <?php if ($view === 'home' && $account !== null): ?>
         <script defer src="/assets/canvas-confetti-1.9.4.js"></script>
     <?php endif; ?>
-    <script defer src="/assets/app.js?v=26"></script>
+    <script defer src="/assets/app.js?v=27"></script>
 </head>
 <body class="<?= $account === null ? 'guest' : 'signed-in' ?>">
 <?php if ($account === null): ?>
@@ -244,15 +244,15 @@ if ($view === 'create' && !isset($_POST['type'])) {
                                 <?php endforeach; ?>
                                 <?php if ($card['hint'] !== '' || $card['image'] !== ''): ?>
                                     <div class="mnemonic">
-                                        <?php if ($card['image'] !== ''): ?>
-                                            <img src="<?= $mediaUrl($deckId, $card['image'], $card['id']) ?>" alt="Illustration zur Eselsbrücke" loading="lazy">
-                                        <?php endif; ?>
                                         <div>
                                             <p><?= escape($card['hint']) ?></p>
                                             <?php if ($card['image'] === '' && isset(MEDIA_STAGE_LABELS[$card['imageState']])): ?>
                                                 <p class="small muted">Merkbild: <?= MEDIA_STAGE_LABELS[$card['imageState']] ?></p>
                                             <?php endif; ?>
                                         </div>
+                                        <?php if ($card['image'] !== ''): ?>
+                                            <img src="<?= $mediaUrl($deckId, $card['image'], $card['id']) ?>" alt="Illustration zur Eselsbrücke" loading="lazy">
+                                        <?php endif; ?>
                                     </div>
                                 <?php endif; ?>
                             </article>
@@ -658,7 +658,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                                     <div class="card-media"><?php $cardMedia($card['questionMedia'], $deckId, $card['id']); ?></div>
                                 <?php endif; ?>
                                 <?php if ($data['hintLetter'] !== ''): ?>
-                                    <p id="study-hint" class="small muted study-status" role="status"><?= $data['hintUsed'] ? 'Tipp: ' . escape($data['hintLetter']) . ' · Höchstens „Gut“ möglich.' : '' ?></p>
+                                    <p id="study-hint" class="small muted study-status" role="status"><?= $data['hintUsed'] ? 'Tipp: ' . escape($data['hintLetter']) : '' ?></p>
                                 <?php endif; ?>
                             </div>
                             <?php if ($canGrade): ?>
@@ -677,12 +677,11 @@ if ($view === 'create' && !isset($_POST['type'])) {
                                 <?php if ($card['answerMedia']): ?>
                                     <div class="card-media"><?php $cardMedia($card['answerMedia'], $deckId, $card['id']); ?></div>
                                 <?php endif; ?>
-                                <?php if ($card['hint'] !== ''): ?>
-                                    <div class="mnemonic" <?= $imagePending ? 'data-media-status="' . $route('media-status', $deckId, ['card' => $card['id']]) . '"' : '' ?>>
-                                        <?php if ($card['image'] !== '' || $imagePending): ?>
-                                            <img <?= $card['image'] !== '' ? 'src="' . $mediaUrl($deckId, $card['image'], $card['id']) . '"' : 'hidden' ?> alt="Illustration zur Eselsbrücke" loading="lazy" data-mnemonic-image>
-                                        <?php endif; ?>
-                                        <div><p><?= escape($card['hint']) ?></p>
+                            </section>
+                            <?php if ($card['hint'] !== ''): ?>
+                                <div class="mnemonic" hidden data-study-mnemonic <?= $imagePending ? 'data-media-status="' . $route('media-status', $deckId, ['card' => $card['id']]) . '"' : '' ?>>
+                                    <div>
+                                        <p><?= escape($card['hint']) ?></p>
                                         <?php if ($card['image'] === '' && isset(MEDIA_STAGE_LABELS[$imageState])): ?>
                                             <p class="small muted" role="status">Merkbild: <span data-media-stage><?= MEDIA_STAGE_LABELS[$imageState] ?></span></p>
                                         <?php endif; ?>
@@ -692,10 +691,12 @@ if ($view === 'create' && !isset($_POST['type'])) {
                                                 <button class="button secondary" type="submit">Bild erneut generieren</button>
                                             </form>
                                         <?php endif; ?>
-                                        </div>
                                     </div>
-                                <?php endif; ?>
-                            </section>
+                                    <?php if ($card['image'] !== '' || $imagePending): ?>
+                                        <img <?= $card['image'] !== '' ? 'src="' . $mediaUrl($deckId, $card['image'], $card['id']) . '"' : 'hidden' ?> alt="Illustration zur Eselsbrücke" loading="lazy" data-mnemonic-image>
+                                    <?php endif; ?>
+                                </div>
+                            <?php endif; ?>
                         </article>
                         <div class="study-controls">
                             <div data-answer-actions hidden>

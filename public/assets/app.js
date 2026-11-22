@@ -84,7 +84,7 @@ class Study {
         this.hintUsed = true;
         this.$ratings.querySelector('[name="rating"][value="4"]').disabled =
           true;
-        $status.textContent = `Tipp: ${result.letter} · Höchstens „Gut“ möglich.`;
+        $status.textContent = `Tipp: ${result.letter}`;
       } catch {
         $status.textContent =
           "Der Tipp konnte nicht angezeigt werden. Bitte erneut versuchen.";
@@ -389,6 +389,8 @@ class Study {
 
   reveal() {
     this.$solution.hidden = false;
+    let $mnemonic = this.$root.querySelector("[data-study-mnemonic]");
+    if ($mnemonic) $mnemonic.hidden = false;
     this.$reveal.setAttribute("aria-expanded", "true");
     this.$actions.hidden = true;
     if (this.$hint) {
