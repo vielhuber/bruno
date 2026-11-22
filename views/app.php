@@ -64,7 +64,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <link rel="icon" type="image/svg+xml" href="/assets/icon.svg?v=4">
     <link rel="apple-touch-icon" href="/assets/icon-192.png?v=4">
     <link rel="manifest" href="/manifest.webmanifest?v=4">
-    <link rel="stylesheet" href="/assets/app.css?v=17">
+    <link rel="stylesheet" href="/assets/app.css?v=18">
     <script defer src="/assets/app.js?v=20"></script>
 </head>
 <body class="<?= $account === null ? 'guest' : 'signed-in' ?>">
@@ -90,8 +90,8 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <div class="app-shell">
         <aside class="sidebar">
             <a class="brand" href="/"><img class="brand-icon" src="/assets/icon.svg?v=4" width="41" height="41" alt=""> bruno</a>
-            <button type="button" class="button secondary mobile-menu" aria-controls="account-menu" aria-expanded="false" data-mobile-menu>Menü</button>
-            <nav aria-label="Hauptnavigation">
+            <button type="button" class="button secondary mobile-menu" aria-controls="primary-menu account-menu" aria-expanded="false" data-mobile-menu>Menü</button>
+            <nav id="primary-menu" aria-label="Hauptnavigation">
                 <a href="/" <?= $view === 'home' ? 'aria-current="page"' : '' ?>>
                     <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg>
                     Übersicht
@@ -599,7 +599,8 @@ if ($view === 'create' && !isset($_POST['type'])) {
                 <?php endif; ?>
                 <header class="screen-header<?= $daily ? ' daily-header' : '' ?>">
                     <div>
-                        <p class="eyebrow"><?= $daily ? 'Deine Lernrunde' : 'Wiederholen' ?></p><h1><?= escape($data['name']) ?></h1>
+                        <?php if (!$daily): ?><p class="eyebrow">Wiederholen</p><?php endif; ?>
+                        <h1><?= escape($data['name']) ?></h1>
                         <?php if ($card && $data['vocabulary']): ?>
                             <p class="small muted"><?= $data['reversed'] ? 'Rückseite zuerst' : 'Vorderseite zuerst' ?></p>
                         <?php endif; ?>
@@ -700,9 +701,8 @@ if ($view === 'create' && !isset($_POST['type'])) {
                         <div class="inline-actions page-actions" data-next-card hidden>
                             <a class="button primary" href="<?= $studyUrl ?>">Nächste Karte</a>
                         </div>
-                        <form class="panel rating-form" method="post" data-ratings hidden>
+                        <form class="panel rating-form" method="post" aria-label="Antwort bewerten" data-ratings hidden>
                             <?php $hidden(verb: 'answer', fields: $reviewFields); ?>
-                            <h2>Antwort selbst bewerten</h2>
                             <div class="ratings">
                                 <?php foreach (REVIEW_RATINGS as $rating => $text): ?>
                                     <button type="submit" name="rating" value="<?= $rating ?>" <?= $rating === 4 && $data['hintUsed'] ? 'disabled' : '' ?>>
