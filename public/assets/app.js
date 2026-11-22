@@ -571,14 +571,34 @@ let $completionSync = document.querySelector("[data-completion-sync]");
 if ($syncShortcut && $completionSync) syncNow($syncShortcut, $completionSync);
 
 let $menu = document.querySelector("[data-mobile-menu]");
-$menu?.addEventListener("click", () => {
-  $menu.setAttribute(
-    "aria-expanded",
-    String($menu.getAttribute("aria-expanded") !== "true"),
-  );
-});
-
 let $answerMode = document.querySelector("[data-answer-mode]");
+if ($menu) {
+  let $backdrop = document.querySelector("[data-mobile-menu-backdrop]");
+  let $main = document.getElementById("main");
+  let $skip = document.querySelector(".skip");
+  let mobile = window.matchMedia("(max-width: 700px)");
+  let isExpanded = () => $menu.getAttribute("aria-expanded") === "true";
+  let setExpanded = (expanded) => {
+    $menu.setAttribute("aria-expanded", String(expanded));
+    $main.inert = expanded;
+    $skip.inert = expanded;
+    if (!expanded && mobile.matches) $menu.focus();
+  };
+  $menu.addEventListener("click", () => setExpanded(!isExpanded()));
+  $backdrop.addEventListener("click", () => setExpanded(false));
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !event.defaultPrevented && isExpanded()) {
+      setExpanded(false);
+    }
+  });
+  mobile.addEventListener("change", () => {
+    if (!mobile.matches && isExpanded()) setExpanded(false);
+  });
+  $answerMode?.addEventListener("change", () => {
+    if (isExpanded()) setExpanded(false);
+  });
+}
+
 if ($answerMode) {
   let key = `bruno-answer-mode:${$answerMode.dataset.answerMode}`;
   try {
@@ -588,10 +608,6 @@ if ($answerMode) {
   }
   if (!$answerMode.value) $answerMode.value = "reveal";
   $answerMode.addEventListener("change", () => {
-    if ($menu?.getAttribute("aria-expanded") === "true") {
-      $menu.setAttribute("aria-expanded", "false");
-      $menu.focus();
-    }
     try {
       localStorage.setItem(key, $answerMode.value);
     } catch {

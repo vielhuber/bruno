@@ -64,11 +64,11 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <link rel="icon" type="image/svg+xml" href="/assets/icon.svg?v=4">
     <link rel="apple-touch-icon" href="/assets/icon-192.png?v=4">
     <link rel="manifest" href="/manifest.webmanifest?v=4">
-    <link rel="stylesheet" href="/assets/app.css?v=28">
+    <link rel="stylesheet" href="/assets/app.css?v=29">
     <?php if (in_array($view, ['home', 'study'], strict: true) && $account !== null): ?>
         <script defer src="/assets/canvas-confetti-1.9.4.js"></script>
     <?php endif; ?>
-    <script defer src="/assets/app.js?v=29"></script>
+    <script defer src="/assets/app.js?v=30"></script>
 </head>
 <body class="<?= $account === null ? 'guest' : 'signed-in' ?>">
 <?php if ($account === null): ?>
@@ -93,59 +93,62 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <div class="app-shell">
         <aside class="sidebar">
             <a class="brand" href="/"><img class="brand-icon" src="/assets/icon.svg?v=4" width="41" height="41" alt=""> bruno</a>
-            <button type="button" class="button secondary mobile-menu" aria-controls="primary-menu account-menu" aria-expanded="false" data-mobile-menu>Menü</button>
-            <nav id="primary-menu" aria-label="Hauptnavigation">
-                <a href="/" <?= $view === 'home' ? 'aria-current="page"' : '' ?>>
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg>
-                    Übersicht
-                </a>
-                <a href="<?= $route('create') ?>" <?= in_array($view, ['create', 'preview'], strict: true) ? 'aria-current="page"' : '' ?>>
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8.5 12h7m-3.5-3.5v7"/></svg>
-                    Erstellen
-                </a>
-                <a href="<?= $route('learn') ?>" <?= in_array($view, ['learn', 'lesson'], strict: true) ? 'aria-current="page"' : '' ?>>
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6a8 8 0 0 0-9-2v14a8 8 0 0 1 9 2 8 8 0 0 1 9-2V4a8 8 0 0 0-9 2Zm0 0v14"/></svg>
-                    Lernen
-                </a>
-                <a href="<?= $route('review') ?>" <?= in_array($view, ['review', 'study'], strict: true) ? 'aria-current="page"' : '' ?>>
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 5v5h-5M4 19v-5h5m11-4a8 8 0 0 0-14-4m-2 8a8 8 0 0 0 14 4"/></svg>
-                    Wiederholen
-                </a>
-                <form class="sidebar-sync" method="post" action="<?= $route('sync') ?>" data-sync-shortcut>
-                    <?php $hidden(verb: 'sync-now'); ?>
-                    <button type="submit" aria-label="Anki jetzt synchronisieren" title="Anki jetzt synchronisieren" <?= !$settings['sync'] || ($data['sync']['running'] ?? false) ? 'disabled' : '' ?>>
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5m5 0a8 8 0 1 0-2.5 5.8"/></svg>
-                        Synchronisieren
-                    </button>
-                    <span class="small" role="status"></span>
-                </form>
-                <?php if ($settings['ai']): ?>
-                    <label class="answer-mode" hidden>
-                        Antwortmodus
-                        <select data-answer-mode="<?= escape($account->id) ?>">
-                            <option value="reveal">Aufdecken</option>
-                            <option value="text">Eingeben</option>
-                            <option value="speak">Sprechen</option>
-                        </select>
-                    </label>
-                <?php endif; ?>
-            </nav>
-            <div class="sidebar-foot" id="account-menu">
-                <nav class="sidebar-actions" aria-label="Weitere Funktionen">
-                    <a href="<?= $route('profile') ?>" <?= $view === 'profile' ? 'aria-current="page"' : '' ?>><?= escape($account->email) ?></a>
-                    <a href="<?= $route('decks') ?>" <?= in_array($view, ['decks', 'deck'], strict: true) ? 'aria-current="page"' : '' ?>>Stapel verwalten</a>
-                    <a href="<?= $route('users') ?>" <?= $view === 'users' ? 'aria-current="page"' : '' ?>>Benutzer</a>
-                    <a href="<?= $route('backups') ?>" <?= $view === 'backups' ? 'aria-current="page"' : '' ?>>Backups</a>
-                    <a href="<?= $route('sync') ?>" <?= $view === 'sync' ? 'aria-current="page"' : '' ?>>Anki-Sync</a>
-                    <button type="button" aria-expanded="false" aria-controls="install-help" data-install>App installieren</button>
-                    <form method="post" action="/">
-                        <?php $hidden(verb: 'logout'); ?>
-                        <button type="submit">Abmelden</button>
+            <button type="button" class="button secondary mobile-menu" aria-controls="sidebar-menu" aria-expanded="false" data-mobile-menu>Menü</button>
+            <div class="sidebar-menu" id="sidebar-menu">
+                <nav aria-label="Hauptnavigation">
+                    <a href="/" <?= $view === 'home' ? 'aria-current="page"' : '' ?>>
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg>
+                        Übersicht
+                    </a>
+                    <a href="<?= $route('create') ?>" <?= in_array($view, ['create', 'preview'], strict: true) ? 'aria-current="page"' : '' ?>>
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8.5 12h7m-3.5-3.5v7"/></svg>
+                        Erstellen
+                    </a>
+                    <a href="<?= $route('learn') ?>" <?= in_array($view, ['learn', 'lesson'], strict: true) ? 'aria-current="page"' : '' ?>>
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6a8 8 0 0 0-9-2v14a8 8 0 0 1 9 2 8 8 0 0 1 9-2V4a8 8 0 0 0-9 2Zm0 0v14"/></svg>
+                        Lernen
+                    </a>
+                    <a href="<?= $route('review') ?>" <?= in_array($view, ['review', 'study'], strict: true) ? 'aria-current="page"' : '' ?>>
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 5v5h-5M4 19v-5h5m11-4a8 8 0 0 0-14-4m-2 8a8 8 0 0 0 14 4"/></svg>
+                        Wiederholen
+                    </a>
+                    <form class="sidebar-sync" method="post" action="<?= $route('sync') ?>" data-sync-shortcut>
+                        <?php $hidden(verb: 'sync-now'); ?>
+                        <button type="submit" aria-label="Anki jetzt synchronisieren" title="Anki jetzt synchronisieren" <?= !$settings['sync'] || ($data['sync']['running'] ?? false) ? 'disabled' : '' ?>>
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5m5 0a8 8 0 1 0-2.5 5.8"/></svg>
+                            Synchronisieren
+                        </button>
+                        <span class="small" role="status"></span>
                     </form>
+                    <?php if ($settings['ai']): ?>
+                        <label class="answer-mode" hidden>
+                            Antwortmodus
+                            <select data-answer-mode="<?= escape($account->id) ?>">
+                                <option value="reveal">Aufdecken</option>
+                                <option value="text">Eingeben</option>
+                                <option value="speak">Sprechen</option>
+                            </select>
+                        </label>
+                    <?php endif; ?>
                 </nav>
-                <p id="install-help" class="small muted" hidden>Browsermenü: „App installieren“. iOS: „Zum Home-Bildschirm“.</p>
+                <div class="sidebar-foot">
+                    <nav class="sidebar-actions" aria-label="Weitere Funktionen">
+                        <a href="<?= $route('profile') ?>" <?= $view === 'profile' ? 'aria-current="page"' : '' ?>><?= escape($account->email) ?></a>
+                        <a href="<?= $route('decks') ?>" <?= in_array($view, ['decks', 'deck'], strict: true) ? 'aria-current="page"' : '' ?>>Stapel verwalten</a>
+                        <a href="<?= $route('users') ?>" <?= $view === 'users' ? 'aria-current="page"' : '' ?>>Benutzer</a>
+                        <a href="<?= $route('backups') ?>" <?= $view === 'backups' ? 'aria-current="page"' : '' ?>>Backups</a>
+                        <a href="<?= $route('sync') ?>" <?= $view === 'sync' ? 'aria-current="page"' : '' ?>>Anki-Sync</a>
+                        <button type="button" aria-expanded="false" aria-controls="install-help" data-install>App installieren</button>
+                        <form method="post" action="/">
+                            <?php $hidden(verb: 'logout'); ?>
+                            <button type="submit">Abmelden</button>
+                        </form>
+                    </nav>
+                    <p id="install-help" class="small muted" hidden>Browsermenü: „App installieren“. iOS: „Zum Home-Bildschirm“.</p>
+                </div>
             </div>
         </aside>
+        <div class="mobile-menu-backdrop" data-mobile-menu-backdrop aria-hidden="true"></div>
         <main class="workspace<?= in_array($view, ['home', 'study'], strict: true) && isset($data['card']) ? ' study-workspace' : '' ?>"
             id="main" tabindex="-1" <?= isset($data['reviewRating']) ? 'data-review-rating="' . $data['reviewRating'] . '"' : '' ?>>
             <?php if ($flash !== ''): ?><p class="notice" role="status"><?= escape($flash) ?></p><?php endif; ?>
