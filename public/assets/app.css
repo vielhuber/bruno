@@ -162,13 +162,12 @@ img, video, audio { max-width: 100%; }
 .daily-header { position: sticky; top: 0; z-index: 1; max-width: 760px; align-items: start; padding: 12px 0; border-bottom: 1px solid var(--line); background: var(--paper); }
 .daily-header > div { flex: 1 1 155px; min-width: 0; }
 .daily-header h1 { font-size: clamp(1.45rem, 4vw, 2.35rem); }
-.daily-counter { flex: none; padding: 5px 10px; border-radius: 10px; background: var(--accent-surface); color: var(--accent-hover); font-size: .85rem; white-space: nowrap; }
+.daily-counter { flex: none; padding: 5px 10px; border-radius: 10px; background: linear-gradient(115deg, #ff8faf, #ffc982, #fff099, #9ce9bb, #96d8ff, #cbb0ff); color: var(--paper); box-shadow: 0 0 14px #cbb0ff80; font-size: .85rem; font-weight: 760; white-space: nowrap; }
 .daily-counter strong { font-size: 1.2rem; font-variant-numeric: tabular-nums; }
-.daily-counter:is([data-remaining="1"], [data-remaining="2"]) { background: var(--positive-surface); color: var(--positive); }
 @media (prefers-reduced-motion: no-preference) {
-    .daily-counter:not([data-remaining="0"]) { animation: progress-pulse 1.8s ease-in-out infinite; }
+    .daily-counter:not([data-remaining="0"]) { background-size: 250% 100%; animation: progress-pulse 2.6s ease-in-out infinite; }
 }
-@keyframes progress-pulse { 50% { transform: scale(1.08); box-shadow: 0 0 0 5px #c4b3ff35; } }
+@keyframes progress-pulse { 50% { background-position: 100% 50%; transform: scale(1.1); box-shadow: 0 0 0 5px #cbb0ff66, 0 0 22px #62e5dea0; } }
 .daily-complete { max-width: 760px; display: grid; justify-items: center; gap: 12px; text-align: center; padding-block: clamp(25px, 6vw, 52px); }
 .daily-complete img { width: min(100%, 400px); height: auto; }
 .question, .solution .answer { font-size: clamp(1.65rem, 4.1vw, 3rem); font-weight: 780; letter-spacing: -.042em; line-height: 1.14; }
