@@ -6,6 +6,8 @@ Installierbare Lern-App mit Anki als Datenspeicher und Lernplan.
 
 PHP ≥ 8.3 (cURL, Fileinfo, Mbstring, PDO SQLite, `proc_open`), Composer, Python ≥ 3.10 mit passendem [Anki-Wheel](https://pypi.org/project/anki/) und HTTPS. Den DocumentRoot auf `public/` setzen. Kein Frontend-Build.
 
+Der Konfetti-Effekt nutzt [Canvas Confetti 1.9.4](https://github.com/catdad/canvas-confetti/releases/tag/1.9.4) (ISC), unverändert und lokal eingebunden.
+
 ```sh
 composer install --no-dev
 python3 -m venv .venv

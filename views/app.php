@@ -64,8 +64,11 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <link rel="icon" type="image/svg+xml" href="/assets/icon.svg?v=4">
     <link rel="apple-touch-icon" href="/assets/icon-192.png?v=4">
     <link rel="manifest" href="/manifest.webmanifest?v=4">
-    <link rel="stylesheet" href="/assets/app.css?v=18">
-    <script defer src="/assets/app.js?v=21"></script>
+    <link rel="stylesheet" href="/assets/app.css?v=19">
+    <?php if ($view === 'home' && $account !== null): ?>
+        <script defer src="/assets/canvas-confetti-1.9.4.js"></script>
+    <?php endif; ?>
+    <script defer src="/assets/app.js?v=22"></script>
 </head>
 <body class="<?= $account === null ? 'guest' : 'signed-in' ?>">
 <?php if ($account === null): ?>
@@ -606,7 +609,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                         <?php endif; ?>
                     </div>
                     <?php if ($daily): ?>
-                        <p class="daily-counter" role="status"><strong data-study-remaining><?= $data['remaining'] ?></strong> offen</p>
+                        <p class="daily-counter" role="status" <?= $data['remaining'] <= 2 ? 'data-near-finish' : '' ?>><strong data-study-remaining><?= $data['remaining'] ?></strong> offen</p>
                     <?php endif; ?>
                     <?php if (!$daily): ?>
                         <a class="button secondary" href="<?= $route('lesson', $deckId) ?>">Lernen</a>

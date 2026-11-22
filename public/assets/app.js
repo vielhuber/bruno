@@ -1,38 +1,43 @@
+let launchConfetti;
+
 function celebrateReview() {
   if (
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
-    !Element.prototype.animate
+    !window.confetti ||
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
   ) {
     return;
   }
-  let $confetti = document.createElement("div");
-  $confetti.className = "confetti";
-  $confetti.setAttribute("aria-hidden", "true");
-  document.body.append($confetti);
-  let spread = Math.min(window.innerWidth / 2, 380);
-  for (let index = 0; index < 42; index++) {
-    let $piece = document.createElement("i");
-    $confetti.append($piece);
-    let distance = (Math.random() * 2 - 1) * spread;
-    let height = 55 + Math.random() * 170;
-    let turn = (Math.random() * 2 - 1) * 300;
-    $piece.animate(
-      [
-        { transform: "translate(0, 0)", opacity: 1 },
-        {
-          offset: 0.36,
-          transform: `translate(${distance * 0.7}px, ${-height}px) rotate(${turn}deg)`,
-          opacity: 1,
-        },
-        {
-          transform: `translate(${distance}px, ${height * 1.8}px) rotate(${turn * 2}deg)`,
-          opacity: 0,
-        },
-      ],
-      { duration: 950 + Math.random() * 450, fill: "forwards" },
-    );
+  launchConfetti ??= window.confetti.create(null, {
+    resize: true,
+    useWorker: false,
+    disableForReducedMotion: true,
+  });
+  let colors = ["#c4b3ff", "#a9ebce", "#ffcf7d", "#ff9fbf", "#80ddff"];
+  for (let [x, angle] of [
+    [0.05, 65],
+    [0.95, 115],
+  ]) {
+    launchConfetti({
+      particleCount: 135,
+      angle,
+      spread: 68,
+      startVelocity: 57,
+      ticks: 160,
+      origin: { x, y: 0.7 },
+      colors,
+    });
   }
-  window.setTimeout(() => $confetti.remove(), 1500);
+  launchConfetti({
+    particleCount: 90,
+    spread: 115,
+    startVelocity: 38,
+    gravity: 0.86,
+    ticks: 180,
+    scalar: 1.13,
+    origin: { x: 0.5, y: 0.68 },
+    shapes: ["star", "circle"],
+    colors,
+  });
 }
 
 class Study {
@@ -334,6 +339,10 @@ class Study {
       if (Number.isInteger(result.remaining)) {
         let $remaining = document.querySelector("[data-study-remaining]");
         $remaining.textContent = result.remaining;
+        $remaining.parentElement.toggleAttribute(
+          "data-near-finish",
+          result.remaining > 0 && result.remaining <= 2,
+        );
         if (result.remaining === 0) {
           $nextCard.textContent = "Fertig";
         }

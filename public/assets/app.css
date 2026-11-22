@@ -156,15 +156,15 @@ img, video, audio { max-width: 100%; }
 .daily-header h1 { font-size: clamp(1.45rem, 4vw, 2.35rem); }
 .daily-counter { flex: none; padding: 5px 10px; border-radius: 10px; background: var(--accent-surface); color: var(--accent-hover); font-size: .85rem; white-space: nowrap; }
 .daily-counter strong { font-size: 1.2rem; font-variant-numeric: tabular-nums; }
+.daily-counter[data-near-finish] { background: var(--positive-surface); color: var(--positive); }
+@media (prefers-reduced-motion: no-preference) {
+    .daily-counter[data-near-finish] { animation: finish-pulse 950ms ease-in-out 3; }
+}
+@keyframes finish-pulse { 50% { transform: scale(1.08); box-shadow: 0 0 0 5px #a9ebce35; } }
 .daily-actions .primary { flex: 1; }
 .daily-actions .icon-button { flex: 0 0 44px; }
 .daily-complete { max-width: 760px; display: grid; justify-items: center; gap: 12px; text-align: center; padding-block: clamp(25px, 6vw, 52px); }
 .daily-complete img { width: min(100%, 400px); height: auto; }
-.confetti { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 9; }
-.confetti i { position: absolute; top: 36%; left: 50%; width: 7px; height: 12px; border-radius: 2px; background: #c4b3ff; }
-.confetti i:nth-child(2n) { height: 7px; border-radius: 50%; background: #a9ebce; }
-.confetti i:nth-child(3n) { background: #ffcf7d; }
-.confetti i:nth-child(5n) { background: #ff9fbf; }
 .flashcard > .eyebrow { margin-bottom: 10px; }
 .question { font-size: clamp(1.65rem, 4.1vw, 3rem); font-weight: 780; letter-spacing: -.042em; line-height: 1.14; margin: 0 0 20px; }
 .solution { padding-top: 18px; border-top: 1px solid var(--line); }
