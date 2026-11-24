@@ -1,13 +1,14 @@
-let cacheName = "bruno-shell-v38";
+let cacheName = "bruno-shell-v41";
+let offlinePage = "/assets/offline.html?v=32";
 let shell = [
-  "/assets/app.css?v=30",
+  "/assets/app.css?v=32",
   "/assets/app.js?v=31",
   "/assets/nunito-latin.woff2",
   "/assets/nunito-latin-ext.woff2",
   "/assets/canvas-confetti-1.9.4.js",
   "/assets/icon.svg?v=4",
   "/assets/bruno-pause.svg",
-  "/assets/offline.html",
+  offlinePage,
 ];
 
 self.addEventListener("install", (event) => {
@@ -47,13 +48,17 @@ self.addEventListener("fetch", (event) => {
   }
   if (event.request.mode === "navigate") {
     event.respondWith(
-      fetch(event.request).catch(() => caches.match("/assets/offline.html")),
+      fetch(event.request).catch(() =>
+        caches.match(offlinePage, { cacheName }),
+      ),
     );
     return;
   }
   if (shell.includes(url.pathname + url.search)) {
     event.respondWith(
-      fetch(event.request).catch(() => caches.match(event.request)),
+      fetch(event.request).catch(() =>
+        caches.match(event.request, { cacheName }),
+      ),
     );
   }
 });
