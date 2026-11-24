@@ -64,11 +64,11 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <link rel="icon" type="image/svg+xml" href="/assets/icon.svg?v=4">
     <link rel="apple-touch-icon" href="/assets/icon-192.png?v=4">
     <link rel="manifest" href="/manifest.webmanifest?v=4">
-    <link rel="stylesheet" href="/assets/app.css?v=29">
+    <link rel="stylesheet" href="/assets/app.css?v=30">
     <?php if (in_array($view, ['home', 'study'], strict: true) && $account !== null): ?>
         <script defer src="/assets/canvas-confetti-1.9.4.js"></script>
     <?php endif; ?>
-    <script defer src="/assets/app.js?v=30"></script>
+    <script defer src="/assets/app.js?v=31"></script>
 </head>
 <body class="<?= $account === null ? 'guest' : 'signed-in' ?>">
 <?php if ($account === null): ?>
@@ -640,13 +640,14 @@ if ($view === 'create' && !isset($_POST['type'])) {
                     $signature = hash_hmac('sha256', implode(':', [...$cardFields, $shown]), $_SESSION['reviewSecret']);
                     $reviewFields = $cardFields + ['shown' => $shown, 'signature' => $signature, 'reversed' => (int) $data['reversed']];
                     $canGrade = $settings['ai'] && $card['question'] !== '' && $card['answer'] !== '';
+                    $hasMnemonic = $card['hint'] !== '';
                     $imageState = $card['imageState'];
                     $imagePending = in_array($imageState, PENDING_MEDIA_STATES, strict: true);
                     ?>
                     <div class="study" data-study>
                         <article class="panel flashcard">
                             <?php if ($data['hintLetter'] !== ''): ?>
-                                <button type="button" class="button secondary icon-button" aria-label="Tipp anzeigen" title="Tipp anzeigen" aria-controls="study-hint" data-study-hint <?= $data['hintUsed'] ? 'disabled' : '' ?>>
+                                <button type="button" class="button secondary icon-button" aria-label="Tipp anzeigen" title="Tipp anzeigen" aria-controls="study-hint<?= $hasMnemonic ? ' study-mnemonic' : '' ?>" data-study-hint <?= $data['hintUsed'] ? 'disabled' : '' ?>>
                                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6m-5 3h4M9 15v-1c0-.8-.5-1.3-1-1.8a6 6 0 1 1 8 0c-.5.5-1 1-1 1.8v1"/></svg>
                                 </button>
                             <?php endif; ?>
@@ -656,7 +657,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                                     <div class="card-media"><?php $cardMedia($card['questionMedia'], $deckId, $card['id']); ?></div>
                                 <?php endif; ?>
                                 <?php if ($data['hintLetter'] !== ''): ?>
-                                    <p id="study-hint" class="small muted study-status" role="status"><?= $data['hintUsed'] ? 'Tipp: ' . escape($data['hintLetter']) : '' ?></p>
+                                    <p id="study-hint" class="small muted study-status" role="status"><?= $data['hintUsed'] ? escape($data['hintLetter']) . '...' : '' ?></p>
                                 <?php endif; ?>
                             </div>
                             <?php if ($canGrade): ?>
@@ -676,9 +677,9 @@ if ($view === 'create' && !isset($_POST['type'])) {
                                     <div class="card-media"><?php $cardMedia($card['answerMedia'], $deckId, $card['id']); ?></div>
                                 <?php endif; ?>
                             </section>
-                            <?php if ($card['hint'] !== ''): ?>
-                                <div class="mnemonic" hidden data-study-mnemonic <?= $imagePending ? 'data-media-status="' . $route('media-status', $deckId, ['card' => $card['id']]) . '"' : '' ?>>
-                                    <div>
+                            <?php if ($hasMnemonic): ?>
+                                <div id="study-mnemonic" class="mnemonic" <?= $data['hintUsed'] ? '' : 'hidden' ?> data-study-mnemonic <?= $imagePending ? 'data-media-status="' . $route('media-status', $deckId, ['card' => $card['id']]) . '"' : '' ?>>
+                                    <div data-mnemonic-details hidden>
                                         <p><?= escape($card['hint']) ?></p>
                                         <?php if ($card['image'] === '' && isset(MEDIA_STAGE_LABELS[$imageState])): ?>
                                             <p class="small muted" role="status">Merkbild: <span data-media-stage><?= MEDIA_STAGE_LABELS[$imageState] ?></span></p>

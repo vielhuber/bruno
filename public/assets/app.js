@@ -84,6 +84,7 @@ class Study {
     this.$form = this.$root.querySelector("[data-grade]");
     this.$feedback = this.$root.querySelector("[data-feedback]");
     this.$hint = this.$root.querySelector("[data-study-hint]");
+    this.$mnemonic = this.$root.querySelector("[data-study-mnemonic]");
     this.hintUsed = this.$hint?.disabled ?? false;
     this.$recordStatus = this.$root.querySelector("[data-record-status]");
     this.$reveal.addEventListener("click", () => {
@@ -112,7 +113,8 @@ class Study {
         this.hintUsed = true;
         this.$ratings.querySelector('[name="rating"][value="4"]').disabled =
           true;
-        $status.textContent = `Tipp: ${result.letter}`;
+        $status.textContent = `${result.letter}...`;
+        if (this.$mnemonic) this.$mnemonic.hidden = false;
       } catch {
         $status.textContent =
           "Der Tipp konnte nicht angezeigt werden. Bitte erneut versuchen.";
@@ -417,8 +419,10 @@ class Study {
 
   reveal() {
     this.$solution.hidden = false;
-    let $mnemonic = this.$root.querySelector("[data-study-mnemonic]");
-    if ($mnemonic) $mnemonic.hidden = false;
+    if (this.$mnemonic) {
+      this.$mnemonic.querySelector("[data-mnemonic-details]").hidden = false;
+      this.$mnemonic.hidden = false;
+    }
     this.$reveal.setAttribute("aria-expanded", "true");
     this.$actions.hidden = true;
     if (this.$hint) {

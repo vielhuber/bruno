@@ -193,6 +193,8 @@ img, video, audio { max-width: 100%; }
 .mnemonic { margin-top: 15px; background: #382e28; padding: 12px; border-radius: 12px; display: flex; align-items: center; gap: 13px; color: #f1d4ad; }
 .mnemonic .muted { color: inherit; }
 .mnemonic img { order: -1; width: min(36%, 164px); aspect-ratio: 1; object-fit: cover; border-radius: 9px; }
+[data-study-mnemonic]:not(:has(> :not([hidden]))) { display: none; }
+[data-mnemonic-details][hidden] + img { margin-inline: auto; }
 .flashcard [data-feedback] { margin: 12px 0; }
 .flashcard .study-status:not(:empty) { margin: 10px 0; }
 .study-controls { position: sticky; bottom: env(safe-area-inset-bottom, 0px); z-index: 2; background: var(--paper); padding-block: 4px; }
