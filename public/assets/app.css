@@ -67,7 +67,7 @@ body {
 body::before {
     content: "";
     position: fixed;
-    inset: 0;
+    inset: -48px;
     z-index: -1;
     pointer-events: none;
     background:
@@ -282,8 +282,12 @@ img, video, audio { max-width: 100%; }
 }
 
 @media (prefers-reduced-motion: no-preference) {
-    body::before { animation: ambient-glow 14s ease-in-out infinite; }
+    body::before { animation: ambient-drift 9s ease-in-out infinite alternate; }
     .mobile-menu-backdrop { transition: opacity .18s ease, visibility .18s; }
 }
 
-@keyframes ambient-glow { 50% { opacity: .48; } }
+@keyframes ambient-drift {
+    0% { opacity: .66; transform: translate3d(-32px, 16px, 0); }
+    50% { opacity: .96; transform: translate3d(38px, -28px, 0); }
+    100% { opacity: .78; transform: translate3d(10px, 34px, 0); }
+}
