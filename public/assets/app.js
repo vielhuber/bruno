@@ -68,6 +68,13 @@ function celebrateReview(rating) {
   });
 }
 
+function setActionLabel($action, label, emoji) {
+  $action.querySelector(".action-label").textContent = label;
+  for (let $decoration of $action.querySelectorAll(".action-emoji")) {
+    $decoration.textContent = emoji;
+  }
+}
+
 class Study {
   static SELECTOR = "[data-study]";
   static NEXT_AUDIO_KEY = "bruno-next-audio";
@@ -218,7 +225,7 @@ class Study {
           for (let track of stream.getTracks()) {
             track.stop();
           }
-          this.$record.textContent = "Weiter";
+          setActionLabel(this.$record, "Weiter", "🎙️");
           this.$record.disabled = true;
           let payload;
           try {
@@ -302,7 +309,7 @@ class Study {
             recording.stop();
           }
         }, 20000);
-        this.$record.textContent = "Aufnahme stoppen";
+        setActionLabel(this.$record, "Aufnahme stoppen", "⏹️");
         this.$recordStatus.textContent =
           "Aufnahme läuft (maximal 20 Sekunden).";
         this.$record.disabled = false;
@@ -382,7 +389,7 @@ class Study {
         $remaining.textContent = result.remaining;
         $remaining.parentElement.dataset.remaining = result.remaining;
         if (result.remaining === 0) {
-          $nextCard.textContent = "Fertig";
+          setActionLabel($nextCard, "Fertig", "🏁");
         }
       }
       if (payload.has("voice") && result.remaining !== 0) {
@@ -524,7 +531,7 @@ class Editor {
     this.$form.addEventListener("submit", () => {
       let $button = this.$form.querySelector('button[type="submit"]');
       $button.disabled = true;
-      $button.textContent = "Vorschau wird erstellt …";
+      setActionLabel($button, "Vorschau wird erstellt …", "⏳");
     });
   }
 }
@@ -533,7 +540,7 @@ let $syncForm = document.querySelector("[data-sync]");
 $syncForm?.addEventListener("submit", () => {
   let $submit = $syncForm.querySelector('button[type="submit"]');
   $submit.disabled = true;
-  $submit.textContent = "Synchronisierung läuft …";
+  setActionLabel($submit, "Synchronisierung läuft …", "🔄");
 });
 
 async function syncNow($form, $feedback) {

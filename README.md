@@ -8,6 +8,8 @@ PHP ≥ 8.3 (cURL, Fileinfo, Mbstring, PDO SQLite, `proc_open`), Composer, Pytho
 
 Der Konfetti-Effekt nutzt [Canvas Confetti 1.9.4](https://github.com/catdad/canvas-confetti/releases/tag/1.9.4) (ISC), unverändert und lokal eingebunden.
 
+Die Buttons nutzen einen lokal eingebundenen Teilfont von [Noto Color Emoji](https://fonts.google.com/specimen/Noto+Color+Emoji) (SIL OFL 1.1). Kommt ein neues Button-Emoji hinzu, erzeugt man den Teilfont mit [`text=`](https://developers.google.com/fonts/docs/css2#optimizing_your_font_requests) für die verwendeten Zeichen neu.
+
 ```sh
 composer install --no-dev
 python3 -m venv .venv

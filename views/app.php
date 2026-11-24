@@ -27,6 +27,10 @@ $hidden = static function (string $verb, array $fields = []) use ($csrf): void {
         echo '<input type="hidden" name="' . escape($name) . '" value="' . escape((string) $value) . '">';
     }
 };
+$actionLabel = static function (string $text, string $emoji): string {
+    $decoration = '<span class="action-emoji" aria-hidden="true">' . escape($emoji) . '</span>';
+    return $decoration . '<span class="action-label">' . escape($text) . '</span>' . $decoration;
+};
 $label = match ($view) {
     'login' => 'Anmelden',
     'decks' => 'Stapel verwalten',
@@ -64,11 +68,11 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <link rel="icon" type="image/svg+xml" href="/assets/icon.svg?v=4">
     <link rel="apple-touch-icon" href="/assets/icon-192.png?v=4">
     <link rel="manifest" href="/manifest.webmanifest?v=4">
-    <link rel="stylesheet" href="/assets/app.css?v=34">
+    <link rel="stylesheet" href="/assets/app.css?v=37">
     <?php if (in_array($view, ['home', 'study'], strict: true) && $account !== null): ?>
         <script defer src="/assets/canvas-confetti-1.9.4.js"></script>
     <?php endif; ?>
-    <script defer src="/assets/app.js?v=31"></script>
+    <script defer src="/assets/app.js?v=32"></script>
 </head>
 <body class="<?= $account === null ? 'guest' : 'signed-in' ?>">
 <?php if ($account === null): ?>
@@ -83,7 +87,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                 <?php $hidden(verb: 'login'); ?>
                 <label>E-Mail-Adresse <input type="email" name="email" autocomplete="username" maxlength="254" required autofocus></label>
                 <label>Passwort <input type="password" name="password" autocomplete="current-password" required></label>
-                <button class="button primary" type="submit">Anmelden</button>
+                <button class="button primary" type="submit"><?= $actionLabel(text: 'Anmelden', emoji: '🔑') ?></button>
             </form>
         </article>
     </main>
@@ -93,30 +97,27 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <div class="app-shell">
         <aside class="sidebar">
             <a class="brand" href="/"><img class="brand-icon" src="/assets/icon.svg?v=4" width="41" height="41" alt=""> bruno</a>
-            <button type="button" class="button secondary mobile-menu" aria-controls="sidebar-menu" aria-expanded="false" data-mobile-menu>Menü</button>
+            <button type="button" class="button mobile-menu" aria-label="Menü" aria-controls="sidebar-menu" aria-expanded="false" data-mobile-menu>
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+            </button>
             <div class="sidebar-menu" id="sidebar-menu">
                 <nav aria-label="Hauptnavigation">
                     <a href="/" <?= $view === 'home' ? 'aria-current="page"' : '' ?>>
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg>
-                        Übersicht
+                        <?= $actionLabel(text: 'Übersicht', emoji: '🏠') ?>
                     </a>
                     <a href="<?= $route('create') ?>" <?= in_array($view, ['create', 'preview'], strict: true) ? 'aria-current="page"' : '' ?>>
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8.5 12h7m-3.5-3.5v7"/></svg>
-                        Erstellen
+                        <?= $actionLabel(text: 'Erstellen', emoji: '✨') ?>
                     </a>
                     <a href="<?= $route('learn') ?>" <?= in_array($view, ['learn', 'lesson'], strict: true) ? 'aria-current="page"' : '' ?>>
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6a8 8 0 0 0-9-2v14a8 8 0 0 1 9 2 8 8 0 0 1 9-2V4a8 8 0 0 0-9 2Zm0 0v14"/></svg>
-                        Lernen
+                        <?= $actionLabel(text: 'Lernen', emoji: '📚') ?>
                     </a>
                     <a href="<?= $route('review') ?>" <?= in_array($view, ['review', 'study'], strict: true) ? 'aria-current="page"' : '' ?>>
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 5v5h-5M4 19v-5h5m11-4a8 8 0 0 0-14-4m-2 8a8 8 0 0 0 14 4"/></svg>
-                        Wiederholen
+                        <?= $actionLabel(text: 'Wiederholen', emoji: '🔁') ?>
                     </a>
                     <form class="sidebar-sync" method="post" action="<?= $route('sync') ?>" data-sync-shortcut>
                         <?php $hidden(verb: 'sync-now'); ?>
                         <button type="submit" aria-label="Anki jetzt synchronisieren" title="Anki jetzt synchronisieren" <?= !$settings['sync'] || ($data['sync']['running'] ?? false) ? 'disabled' : '' ?>>
-                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5m5 0a8 8 0 1 0-2.5 5.8"/></svg>
-                            Synchronisieren
+                            <?= $actionLabel(text: 'Synchronisieren', emoji: '🔄') ?>
                         </button>
                         <span class="small" role="status"></span>
                     </form>
@@ -133,15 +134,15 @@ if ($view === 'create' && !isset($_POST['type'])) {
                 </nav>
                 <div class="sidebar-foot">
                     <nav class="sidebar-actions" aria-label="Weitere Funktionen">
-                        <a href="<?= $route('profile') ?>" <?= $view === 'profile' ? 'aria-current="page"' : '' ?>><?= escape($account->email) ?></a>
-                        <a href="<?= $route('decks') ?>" <?= in_array($view, ['decks', 'deck'], strict: true) ? 'aria-current="page"' : '' ?>>Stapel verwalten</a>
-                        <a href="<?= $route('users') ?>" <?= $view === 'users' ? 'aria-current="page"' : '' ?>>Benutzer</a>
-                        <a href="<?= $route('backups') ?>" <?= $view === 'backups' ? 'aria-current="page"' : '' ?>>Backups</a>
-                        <a href="<?= $route('sync') ?>" <?= $view === 'sync' ? 'aria-current="page"' : '' ?>>Anki-Sync</a>
-                        <button type="button" aria-expanded="false" aria-controls="install-help" data-install>App installieren</button>
+                        <a class="profile-link" href="<?= $route('profile') ?>" <?= $view === 'profile' ? 'aria-current="page"' : '' ?>><?= $actionLabel(text: $account->email, emoji: '👤') ?></a>
+                        <a href="<?= $route('decks') ?>" <?= in_array($view, ['decks', 'deck'], strict: true) ? 'aria-current="page"' : '' ?>><?= $actionLabel(text: 'Stapel verwalten', emoji: '🗂️') ?></a>
+                        <a href="<?= $route('users') ?>" <?= $view === 'users' ? 'aria-current="page"' : '' ?>><?= $actionLabel(text: 'Benutzer', emoji: '👥') ?></a>
+                        <a href="<?= $route('backups') ?>" <?= $view === 'backups' ? 'aria-current="page"' : '' ?>><?= $actionLabel(text: 'Backups', emoji: '💾') ?></a>
+                        <a href="<?= $route('sync') ?>" <?= $view === 'sync' ? 'aria-current="page"' : '' ?>><?= $actionLabel(text: 'Anki-Sync', emoji: '🔄') ?></a>
+                        <button type="button" aria-expanded="false" aria-controls="install-help" data-install><?= $actionLabel(text: 'App installieren', emoji: '📲') ?></button>
                         <form method="post" action="/">
                             <?php $hidden(verb: 'logout'); ?>
-                            <button type="submit">Abmelden</button>
+                            <button type="submit"><?= $actionLabel(text: 'Abmelden', emoji: '🚪') ?></button>
                         </form>
                     </nav>
                     <p id="install-help" class="small muted" hidden>Browsermenü: „App installieren“. iOS: „Zum Home-Bildschirm“.</p>
@@ -186,21 +187,21 @@ if ($view === 'create' && !isset($_POST['type'])) {
                                     <?php if ($management): ?>
                                         <?php $editing = $errorMessage !== '' && $verb === 'rename-deck' && $deckId === $deck['id']; ?>
                                         <details <?= $editing ? 'open' : '' ?>>
-                                            <summary class="button secondary">Bearbeiten</summary>
+                                            <summary class="button secondary"><?= $actionLabel(text: 'Bearbeiten', emoji: '✏️') ?></summary>
                                             <form class="form-grid page-actions" method="post" action="<?= $route('decks') ?>">
                                                 <?php $hidden(verb: 'rename-deck', fields: ['deck' => $deck['id']]); ?>
                                                 <label>Stapelname <input name="title" value="<?= escape($editing ? input($_POST, key: 'title') : $deck['name']) ?>" maxlength="100" required></label>
-                                                <button class="button secondary" type="submit">Namen speichern</button>
-                                                <p><a class="button secondary" href="<?= $route('create', $deck['id']) ?>">Karten hinzufügen</a></p>
+                                                <button class="button secondary" type="submit"><?= $actionLabel(text: 'Namen speichern', emoji: '💾') ?></button>
+                                                <p><a class="button secondary" href="<?= $route('create', $deck['id']) ?>"><?= $actionLabel(text: 'Karten hinzufügen', emoji: '➕') ?></a></p>
                                             </form>
                                         </details>
                                         <?php if ($deck['deletable']): ?>
                                             <details <?= $errorMessage !== '' && $verb === 'delete-deck' && $deckId === $deck['id'] ? 'open' : '' ?>>
-                                                <summary class="button secondary">Löschen</summary>
+                                                <summary class="button secondary"><?= $actionLabel(text: 'Löschen', emoji: '🗑️') ?></summary>
                                                 <form class="form-grid page-actions" method="post" action="<?= $route('decks') ?>">
                                                     <?php $hidden(verb: 'delete-deck', fields: ['deck' => $deck['id']]); ?>
                                                     <p class="small muted">Der Stapel und seine Karten werden aus Anki gelöscht.</p>
-                                                    <button class="button secondary" type="submit">Stapel endgültig löschen</button>
+                                                    <button class="button secondary" type="submit"><?= $actionLabel(text: 'Stapel endgültig löschen', emoji: '🗑️') ?></button>
                                                 </form>
                                             </details>
                                         <?php endif; ?>
@@ -209,7 +210,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                                         <span class="badge">Keine Karten fällig</span>
                                     <?php endif; ?>
                                     <?php if (!$management && !$notDue): ?>
-                                        <a class="button primary" href="<?= $route($review ? 'study' : 'lesson', $deck['id']) ?>"><?= escape($label) ?></a>
+                                        <a class="button primary" href="<?= $route($review ? 'study' : 'lesson', $deck['id']) ?>"><?= $actionLabel(text: $label, emoji: $review ? '🔁' : '📚') ?></a>
                                     <?php endif; ?>
                                 </div>
                             </article>
@@ -219,7 +220,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
             <?php break;
                 case 'deck': ?>
                 <?php $cardCount = count($data['cards']); ?>
-                <a class="back-link" href="<?= $route('decks') ?>">← Stapel verwalten</a>
+                <a class="back-link" href="<?= $route('decks') ?>"><?= $actionLabel(text: 'Stapel verwalten', emoji: '⬅️') ?></a>
                 <header class="screen-header">
                     <div><h1><?= escape($label) ?></h1><p class="small muted"><?= $cardCount ?> <?= $cardCount === 1 ? 'Karte' : 'Karten' ?></p></div>
                 </header>
@@ -272,7 +273,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                     <div><h1>Backups</h1><p class="muted">Anki-Sammlung und Medien</p></div>
                     <form method="post" action="<?= $route('backups') ?>">
                         <?php $hidden(verb: 'backup'); ?>
-                        <button class="button primary" type="submit">Backup erstellen</button>
+                        <button class="button primary" type="submit"><?= $actionLabel(text: 'Backup erstellen', emoji: '💾') ?></button>
                     </form>
                 </header>
                 <dl class="stats backup-stats" aria-label="Backup-Status">
@@ -301,10 +302,10 @@ if ($view === 'create' && !isset($_POST['type'])) {
                                             <td>
                                                 <time datetime="<?= $createdAt->format(DATE_ATOM) ?>"><span><?= $createdAt->format('d.m.Y') ?></span> <span class="muted"><?= $createdAt->format('H:i:s') ?></span></time>
                                                 <details class="backup-delete">
-                                                    <summary class="button secondary">Backup löschen</summary>
+                                                    <summary class="button secondary"><?= $actionLabel(text: 'Backup löschen', emoji: '🗑️') ?></summary>
                                                     <form method="post" action="<?= $route('backups') ?>">
                                                         <?php $hidden(verb: 'delete-backup', fields: ['backup' => $backup['id']]); ?>
-                                                        <button class="button secondary" type="submit">Endgültig löschen</button>
+                                                        <button class="button secondary" type="submit"><?= $actionLabel(text: 'Endgültig löschen', emoji: '🗑️') ?></button>
                                                     </form>
                                                 </details>
                                             </td>
@@ -333,10 +334,10 @@ if ($view === 'create' && !isset($_POST['type'])) {
                 <header class="screen-header">
                     <div><h1>Anki-Sync</h1><p class="muted">bruno ↔ AnkiWeb · Karten, Lernstände und Medien</p></div>
                     <div class="inline-actions">
-                        <a class="button secondary" href="<?= $route('sync') ?>">Aktualisieren</a>
+                        <a class="button secondary" href="<?= $route('sync') ?>"><?= $actionLabel(text: 'Aktualisieren', emoji: '🔄') ?></a>
                         <form method="post" action="<?= $route('sync') ?>" data-sync>
                             <?php $hidden(verb: 'sync-now'); ?>
-                            <button class="button primary" type="submit" <?= !$syncStatus['configured'] || $syncStatus['running'] ? 'disabled' : '' ?>>Jetzt synchronisieren</button>
+                            <button class="button primary" type="submit" <?= !$syncStatus['configured'] || $syncStatus['running'] ? 'disabled' : '' ?>><?= $actionLabel(text: 'Jetzt synchronisieren', emoji: '🔄') ?></button>
                         </form>
                     </div>
                 </header>
@@ -365,7 +366,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                         </select>
                     </label>
                     <p class="small muted">Gilt für alle Konten. Änderungen in Anki Desktop zuerst dort mit AnkiWeb synchronisieren. Zeiten: Berlin.</p>
-                    <button class="button secondary" type="submit" <?= $syncStatus['running'] ? 'disabled' : '' ?>>Intervall speichern</button>
+                    <button class="button secondary" type="submit" <?= $syncStatus['running'] ? 'disabled' : '' ?>><?= $actionLabel(text: 'Intervall speichern', emoji: '⏱️') ?></button>
                 </form>
             <?php break;
                 case 'profile': ?>
@@ -375,7 +376,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                     <label>E-Mail-Adresse <input type="email" name="email" value="<?= escape($account->email) ?>" autocomplete="username" maxlength="254" required></label>
                     <label>Aktuelles Passwort <input type="password" name="current_password" autocomplete="current-password" required></label>
                     <label>Neues Passwort (optional) <input type="password" name="password" autocomplete="new-password" minlength="12" maxlength="72"></label>
-                    <button class="button primary" type="submit">Profil speichern</button>
+                    <button class="button primary" type="submit"><?= $actionLabel(text: 'Profil speichern', emoji: '💾') ?></button>
                 </form>
             <?php break;
                 case 'users': ?>
@@ -387,7 +388,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                         <?php $hidden(verb: 'create-user'); ?>
                         <label>E-Mail-Adresse <input type="email" name="email" autocomplete="off" maxlength="254" required></label>
                         <label>Passwort <input type="password" name="password" autocomplete="new-password" minlength="12" maxlength="72" required></label>
-                        <button class="button primary" type="submit">Benutzer anlegen</button>
+                        <button class="button primary" type="submit"><?= $actionLabel(text: 'Benutzer anlegen', emoji: '➕') ?></button>
                     </form>
                     <section class="panel form-grid" aria-labelledby="users-list">
                         <h2 id="users-list">Bestehende Benutzer</h2>
@@ -395,23 +396,23 @@ if ($view === 'create' && !isset($_POST['type'])) {
                             <details class="user-entry" <?= $errorMessage !== '' && input($_POST, key: 'user') === $userId ? 'open' : '' ?>>
                                 <summary><?= escape($email) ?></summary>
                                 <?php if ($userId === $account->id): ?>
-                                    <p class="page-actions"><a class="button secondary" href="<?= $route('profile') ?>">Eigenes Profil bearbeiten</a></p>
+                                    <p class="page-actions"><a class="button secondary" href="<?= $route('profile') ?>"><?= $actionLabel(text: 'Eigenes Profil bearbeiten', emoji: '✏️') ?></a></p>
                                 <?php endif; ?>
                                 <?php if ($userId !== $account->id): ?>
                                     <form class="form-grid page-actions" method="post" action="<?= $route('users') ?>">
                                         <?php $hidden(verb: 'update-user', fields: ['user' => $userId]); ?>
                                         <label>E-Mail-Adresse <input type="email" name="email" value="<?= escape($email) ?>" autocomplete="off" maxlength="254" required></label>
                                         <label>Neues Passwort (optional) <input type="password" name="password" autocomplete="new-password" minlength="12" maxlength="72"></label>
-                                        <button class="button secondary" type="submit">Benutzer speichern</button>
+                                        <button class="button secondary" type="submit"><?= $actionLabel(text: 'Benutzer speichern', emoji: '💾') ?></button>
                                     </form>
                                 <?php endif; ?>
                                 <?php if ($canDeleteUser): ?>
                                     <details class="page-actions">
-                                        <summary class="button secondary">Benutzer löschen</summary>
+                                        <summary class="button secondary"><?= $actionLabel(text: 'Benutzer löschen', emoji: '🗑️') ?></summary>
                                         <form class="inline-actions page-actions" method="post" action="<?= $route('users') ?>">
                                             <?php $hidden(verb: 'delete-user', fields: ['user' => $userId]); ?>
                                             <span class="small muted">Anki-Stapel bleiben erhalten.</span>
-                                            <button class="button secondary" type="submit">Endgültig löschen</button>
+                                            <button class="button secondary" type="submit"><?= $actionLabel(text: 'Endgültig löschen', emoji: '🗑️') ?></button>
                                         </form>
                                     </details>
                                 <?php endif; ?>
@@ -424,7 +425,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                 <header class="screen-header">
                     <div><p class="eyebrow">Schritt 1 von 2</p><h1>Stapel erstellen</h1></div>
                     <?php if (isset($_SESSION['deckDraft'])): ?>
-                        <a class="button secondary" href="<?= $route('preview') ?>">Offener Entwurf</a>
+                        <a class="button secondary" href="<?= $route('preview') ?>"><?= $actionLabel(text: 'Offener Entwurf', emoji: '📝') ?></a>
                     <?php endif; ?>
                 </header>
                 <?php if (!$settings['ai']): ?><p class="notice">Kein KI-Zugang eingerichtet.</p><?php endif; ?>
@@ -457,7 +458,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                     <label>Schulbuchauszug oder anonymisierter Test <span class="muted small">PDF, PNG, JPG, TXT · bis zu 10 Dateien, zusammen max. 8 MB</span>
                         <input type="file" name="document[]" accept="application/pdf,image/jpeg,image/png,text/plain" multiple>
                     </label>
-                    <button type="submit" class="button primary" <?= $settings['ai'] ? '' : 'disabled' ?>>Kartenvorschau erstellen</button>
+                    <button type="submit" class="button primary" <?= $settings['ai'] ? '' : 'disabled' ?>><?= $actionLabel(text: 'Kartenvorschau erstellen', emoji: '✨') ?></button>
                 </form>
             <?php break;
                 case 'preview': ?>
@@ -509,20 +510,20 @@ if ($view === 'create' && !isset($_POST['type'])) {
                 <?php if ($autoGenerate): ?><noscript><?php endif; ?>
                 <div class="inline-actions page-actions">
                     <?php if ($autoGenerate): ?>
-                        <button type="submit" form="preview-batch" class="button primary">Vorschau fortsetzen</button>
+                        <button type="submit" form="preview-batch" class="button primary"><?= $actionLabel(text: 'Vorschau fortsetzen', emoji: '⏩') ?></button>
                     <?php endif; ?>
                     <?php if ($generating && !$autoGenerate): ?>
-                        <a href="<?= $route('preview') ?>" class="button primary">Vorschau fortsetzen</a>
+                        <a href="<?= $route('preview') ?>" class="button primary"><?= $actionLabel(text: 'Vorschau fortsetzen', emoji: '⏩') ?></a>
                     <?php endif; ?>
                     <?php if (!$generating): ?>
                         <form method="post" action="<?= $route('preview') ?>">
                             <?php $hidden(verb: 'save-preview', fields: ['draft' => $draft['id']]); ?>
-                            <button type="submit" class="button primary"><?= $saveLabel ?></button>
+                            <button type="submit" class="button primary"><?= $actionLabel(text: $saveLabel, emoji: '✅') ?></button>
                         </form>
                     <?php endif; ?>
                     <form method="post" action="<?= $route('preview') ?>">
                         <?php $hidden(verb: 'discard-draft', fields: ['draft' => $draft['id']]); ?>
-                        <button type="submit" class="button secondary">Entwurf verwerfen</button>
+                        <button type="submit" class="button secondary"><?= $actionLabel(text: 'Entwurf verwerfen', emoji: '🗑️') ?></button>
                     </form>
                 </div>
                 <?php if ($autoGenerate): ?></noscript><?php endif; ?>
@@ -536,7 +537,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                     $canGenerateVideo = in_array($videoState, ['', 'failed', 'ready'], strict: true)
                         && $settings['fal'] && $lesson['text'] !== '';
                     ?>
-                <a class="back-link" href="<?= $route('learn') ?>">← Lernen</a>
+                <a class="back-link" href="<?= $route('learn') ?>"><?= $actionLabel(text: 'Lernen', emoji: '⬅️') ?></a>
                 <header class="screen-header">
                     <div><p class="eyebrow">Lernen</p><h1><?= escape($lesson['name']) ?></h1></div>
                 </header>
@@ -564,7 +565,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                             ?>
                             <form method="post" action="<?= $route('lesson', $deckId) ?>">
                                 <?php $hidden(verb: 'queue-video', fields: ['deck' => $deckId]); ?>
-                                <button class="button secondary" type="submit"><?= $videoLabel ?> (ca. <?= $price ?>&nbsp;US-$)</button>
+                                <button class="button secondary" type="submit"><?= $actionLabel(text: $videoLabel . ' (ca. ' . $price . "\u{00A0}" . 'US-$)', emoji: '🎬') ?></button>
                             </form>
                         <?php endif; ?>
                         <?php if ($lesson['video'] === '' && $videoState === '' && !$canGenerateVideo): ?>
@@ -588,8 +589,8 @@ if ($view === 'create' && !isset($_POST['type'])) {
                     <?php endif; ?>
                 </article>
                 <div class="inline-actions page-actions">
-                    <a class="button secondary" href="<?= $route('create', $deckId) ?>">Karten ergänzen</a>
-                    <a class="button primary" href="<?= $route('study', $deckId) ?>">Jetzt wiederholen <span aria-hidden="true">→</span></a>
+                    <a class="button secondary" href="<?= $route('create', $deckId) ?>"><?= $actionLabel(text: 'Karten ergänzen', emoji: '➕') ?></a>
+                    <a class="button primary" href="<?= $route('study', $deckId) ?>"><?= $actionLabel(text: 'Jetzt wiederholen', emoji: '🔁') ?></a>
                 </div>
             <?php break;
                 case 'home':
@@ -611,7 +612,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                     <?php break; ?>
                 <?php endif; ?>
                 <?php if (!$daily): ?>
-                    <a class="back-link" href="<?= $route('review') ?>">← Wiederholen</a>
+                    <a class="back-link" href="<?= $route('review') ?>"><?= $actionLabel(text: 'Wiederholen', emoji: '⬅️') ?></a>
                 <?php endif; ?>
                 <header class="screen-header<?= $daily ? ' daily-header' : '' ?>">
                     <div>
@@ -625,12 +626,12 @@ if ($view === 'create' && !isset($_POST['type'])) {
                         <p class="daily-counter" role="status" data-remaining="<?= $data['remaining'] ?>"><strong data-study-remaining><?= $data['remaining'] ?></strong> offen</p>
                     <?php endif; ?>
                     <?php if (!$daily): ?>
-                        <a class="button secondary" href="<?= $route('lesson', $deckId) ?>">Lernen</a>
+                        <a class="button secondary" href="<?= $route('lesson', $deckId) ?>"><?= $actionLabel(text: 'Lernen', emoji: '📚') ?></a>
                     <?php endif; ?>
                 </header>
                 <?php if (!$card): ?>
                     <article class="panel empty"><h2>Keine Karten fällig.</h2>
-                        <a class="button primary" href="<?= $route('review') ?>">Zur Wiederholung</a>
+                        <a class="button primary" href="<?= $route('review') ?>"><?= $actionLabel(text: 'Zur Wiederholung', emoji: '🔁') ?></a>
                     </article>
                 <?php endif; ?>
                 <?php if ($card): ?>
@@ -687,7 +688,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                                         <?php if ($settings['ai'] && ($imageState === 'failed' || $imagePending)): ?>
                                             <form method="post" action="<?= $studyUrl ?>" data-media-retry <?= $imageState === 'failed' ? '' : 'hidden' ?>>
                                                 <?php $hidden(verb: 'retry-image', fields: $cardFields); ?>
-                                                <button class="button secondary" type="submit">Bild erneut generieren</button>
+                                                <button class="button secondary" type="submit"><?= $actionLabel(text: 'Bild erneut generieren', emoji: '🖼️') ?></button>
                                             </form>
                                         <?php endif; ?>
                                     </div>
@@ -702,24 +703,26 @@ if ($view === 'create' && !isset($_POST['type'])) {
                                 <?php if ($canGrade): ?>
                                     <p class="small muted" data-record-status role="status"></p>
                                 <?php endif; ?>
-                                <button type="button" class="button primary" aria-controls="solution" aria-expanded="false" data-reveal>Weiter</button>
+                                <button type="button" class="button primary" aria-controls="solution" aria-expanded="false" data-reveal><?= $actionLabel(text: 'Weiter', emoji: '⏩') ?></button>
                                 <?php if ($canGrade): ?>
-                                    <button type="button" class="button primary" data-record hidden>Weiter</button>
+                                    <button type="button" class="button primary" data-record hidden><?= $actionLabel(text: 'Weiter', emoji: '🎙️') ?></button>
                                     <form method="post" class="form-grid" data-grade hidden>
                                         <?php $hidden(verb: 'grade-answer', fields: $reviewFields); ?>
                                         <textarea name="answer" aria-label="Antwort" rows="2" maxlength="1500" required></textarea>
-                                        <button class="button primary" type="submit">Weiter</button>
+                                        <button class="button primary" type="submit"><?= $actionLabel(text: 'Weiter', emoji: '✍️') ?></button>
                                     </form>
                                 <?php endif; ?>
                             </div>
                             <div data-next-card hidden>
-                                <a class="button primary" href="<?= $studyUrl ?>">Weiter</a>
+                                <a class="button primary" href="<?= $studyUrl ?>"><?= $actionLabel(text: 'Weiter', emoji: '⏩') ?></a>
                             </div>
                             <form class="ratings" method="post" aria-label="Antwort bewerten" data-ratings hidden>
                                 <?php $hidden(verb: 'answer', fields: $reviewFields); ?>
+                                <?php $ratingEmojis = [1 => '👻', 2 => '💪', 3 => '👍', 4 => '🎉']; ?>
                                 <?php foreach (REVIEW_RATINGS as $rating => $text): ?>
                                     <button type="submit" name="rating" value="<?= $rating ?>" <?= $rating === 4 && $data['hintUsed'] ? 'disabled' : '' ?>>
-                                        <?= $text ?><span><?= escape($card['intervals'][$rating - 1] ?? '') ?></span>
+                                        <span class="rating-action"><?= $actionLabel(text: $text, emoji: $ratingEmojis[$rating]) ?></span>
+                                        <span class="rating-interval"><?= escape($card['intervals'][$rating - 1] ?? '') ?></span>
                                     </button>
                                 <?php endforeach; ?>
                             </form>
