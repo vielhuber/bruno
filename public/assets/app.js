@@ -115,6 +115,13 @@ function setActionLabel($action, label, emoji) {
 class Study {
   static SELECTOR = "[data-study]";
   static NEXT_AUDIO_KEY = "bruno-next-audio";
+  static MALE_VOICES = {
+    de: /\b(?:markus|yannick|martin|stefan|conrad|michael|karsten)\b/i,
+    en: /\b(?:alex|daniel|tom|david|mark|guy|george|ryan|james|richard|sean|ravi)\b/i,
+    es: /\b(?:pablo|jorge|álvaro|alvaro|raul|diego)\b/i,
+    fr: /\b(?:thomas|henri|paul|daniel|claude|guillaume)\b/i,
+    it: /\b(?:cosimo|luca)\b/i,
+  };
 
   constructor($root) {
     this.$root = $root;
@@ -172,6 +179,7 @@ class Study {
     });
     let speech = window.speechSynthesis;
     if (speech && typeof SpeechSynthesisUtterance === "function") {
+      speech.getVoices();
       for (let $speak of this.$root.querySelectorAll("[data-speak]")) {
         let $face = $speak.closest("[data-speech-face]");
         let $speechText = $face.querySelector("[data-speech-text]");
@@ -181,18 +189,26 @@ class Study {
           $speechStatus.textContent = "";
           speech.cancel();
           let utterance = new SpeechSynthesisUtterance($speechText.textContent);
-          let language = $speak.dataset.speak;
-          if (language) {
-            utterance.lang = language;
-            let localVoice = speech
-              .getVoices()
-              .find(
-                (voice) =>
-                  voice.localService &&
-                  voice.lang.toLowerCase().split("-")[0] === language,
-              );
-            if (localVoice) utterance.voice = localVoice;
-          }
+          utterance.lang =
+            $speak.dataset.speak || document.documentElement.lang;
+          let language = utterance.lang.toLowerCase().split("-")[0];
+          let voices = speech
+            .getVoices()
+            .filter(
+              (voice) =>
+                voice.localService &&
+                voice.lang.toLowerCase().split("-")[0] === language,
+            );
+          let preferredVoice =
+            voices.find(
+              (voice) =>
+                /(?:^|[\W_])(?:male|männlich)(?:$|[\W_])/i.test(
+                  `${voice.name} ${voice.voiceURI}`,
+                ) || Study.MALE_VOICES[language]?.test(voice.name),
+            ) ??
+            voices.find((voice) => voice.default) ??
+            voices[0];
+          if (preferredVoice) utterance.voice = preferredVoice;
           utterance.addEventListener("error", ({ error }) => {
             if (error !== "canceled" && error !== "interrupted") {
               $speechStatus.textContent =
