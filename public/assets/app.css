@@ -213,8 +213,14 @@ img, video, audio { max-width: 100%; }
 .daily-counter strong { font-size: 1.2rem; font-variant-numeric: tabular-nums; }
 @media (prefers-reduced-motion: no-preference) {
     .daily-counter:not([data-remaining="0"]) { background-size: 250% 100%; animation: progress-pulse 2.6s ease-in-out infinite; }
+    .card-face > p:not(:empty) { animation: word-arrival .46s cubic-bezier(.2, .75, .25, 1) both; }
 }
 @keyframes progress-pulse { 50% { background-position: 100% 50%; transform: scale(1.1); box-shadow: 0 0 0 5px #cbb0ff66, 0 0 22px #62e5dea0; } }
+@keyframes word-arrival {
+    0% { opacity: 0; filter: blur(5px); transform: translateY(12px) scale(.95, 1.13); }
+    65% { opacity: 1; filter: blur(0); transform: translateY(-2px) scale(1.02, .98); }
+    100% { opacity: 1; transform: none; }
+}
 .daily-complete { max-width: 760px; display: grid; justify-items: center; gap: 12px; text-align: center; padding-block: clamp(25px, 6vw, 52px); }
 .daily-complete img { width: min(100%, 400px); height: auto; }
 .question, .solution .answer { font-size: clamp(1.65rem, 4.1vw, 3rem); font-weight: 780; letter-spacing: -.042em; line-height: 1.14; }

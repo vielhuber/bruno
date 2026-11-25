@@ -1,7 +1,7 @@
-let cacheName = "bruno-shell-v48";
-let offlinePage = "/assets/offline.html?v=38";
+let cacheName = "bruno-shell-v49";
+let offlinePage = "/assets/offline.html?v=39";
 let shell = [
-  "/assets/app.css?v=38",
+  "/assets/app.css?v=39",
   "/assets/app.js?v=34",
   "/assets/nunito-latin.woff2",
   "/assets/nunito-latin-ext.woff2",
