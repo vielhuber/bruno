@@ -11,10 +11,11 @@ header('Content-Type: application/json; charset=utf-8');
 header('X-Content-Type-Options: nosniff');
 
 $job = input($_GET, key: 'job');
+$scheduled = !isset($_GET['job']);
 if (
     $config['cron_password_hash'] === ''
     || !filter_var($_SERVER['HTTPS'] ?? '', FILTER_VALIDATE_BOOL)
-    || !in_array($job, CronHistory::JOBS, strict: true)
+    || (!$scheduled && !in_array($job, CronHistory::JOBS, strict: true))
 ) {
     http_response_code(404);
     exit;
@@ -32,6 +33,15 @@ ignore_user_abort(enable: true);
 set_time_limit(seconds: 0);
 
 try {
+    if ($scheduled) {
+        ['tasks' => $result, 'failed' => $failed] = (new ScheduledCron($config))->run();
+        if ($failed) {
+            http_response_code(503);
+        }
+        echo json_encode($result, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+        exit;
+    }
+
     $anki = new AnkiBridge($config['python'], $config['data_dir']);
     $sync = new AnkiSync($anki, $config['data_dir'], $config['sync_endpoint'] ?? '');
     $result = (new CronHistory($config['data_dir']))->run($job, fn (): array => match ($job) {
