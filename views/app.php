@@ -77,7 +77,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <?php if (in_array($view, ['home', 'study'], strict: true) && $account !== null): ?>
         <script defer src="/assets/canvas-confetti-1.9.4.js"></script>
     <?php endif; ?>
-    <script defer src="/assets/app.js?v=34"></script>
+    <script defer src="/assets/app.js?v=35"></script>
 </head>
 <body class="<?= $account === null ? 'guest' : 'signed-in' ?>">
 <?php if ($account === null): ?>
@@ -671,9 +671,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                                     <p id="study-hint" class="small muted study-status" role="status"><?= $data['hintUsed'] ? escape($data['hintLetter']) . '...' : '' ?></p>
                                 <?php endif; ?>
                             </div>
-                            <?php if ($canGrade): ?>
-                                <div class="notice" data-feedback role="status" hidden></div>
-                            <?php endif; ?>
+                            <div class="notice" data-feedback role="status" hidden></div>
                             <section id="solution" class="solution" aria-label="Lösung" tabindex="-1" data-speech-face hidden>
                                 <div class="card-face">
                                     <p class="answer preline" data-speech-text><?= escape($card['answer']) ?></p>

@@ -1,4 +1,5 @@
 let launchConfetti;
+let ratingAudio;
 
 function celebrateReview(rating) {
   if (
@@ -68,6 +69,42 @@ function celebrateReview(rating) {
   });
 }
 
+function unlockRatingSound() {
+  if (!window.AudioContext) return;
+  try {
+    ratingAudio ??= new AudioContext();
+    if (ratingAudio.state !== "running") ratingAudio.resume().catch(() => {});
+  } catch {
+    // A blocked audio context must not prevent a rating from being saved.
+  }
+}
+
+function playRating(rating) {
+  let notes = [
+    [330, 220, 165],
+    [220, 277],
+    [523, 659, 784],
+    [523, 659, 784, 1047],
+  ][rating - 1];
+  if (notes && ratingAudio?.state === "running") {
+    let start = ratingAudio.currentTime;
+    for (let [index, frequency] of notes.entries()) {
+      let time = start + index * 0.085;
+      let oscillator = ratingAudio.createOscillator();
+      let gain = ratingAudio.createGain();
+      oscillator.type = rating === 1 ? "sine" : "triangle";
+      oscillator.frequency.value = frequency;
+      gain.gain.setValueAtTime(0, time);
+      gain.gain.linearRampToValueAtTime(0.095, time + 0.018);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.17);
+      oscillator.connect(gain).connect(ratingAudio.destination);
+      oscillator.start(time);
+      oscillator.stop(time + 0.18);
+    }
+  }
+  celebrateReview(rating);
+}
+
 function setActionLabel($action, label, emoji) {
   $action.querySelector(".action-label").textContent = label;
   for (let $decoration of $action.querySelectorAll(".action-emoji")) {
@@ -97,9 +134,13 @@ class Study {
     this.$reveal.addEventListener("click", () => {
       this.reveal();
       this.$ratings.hidden = false;
-      if (this.$feedback) {
-        this.$feedback.hidden = true;
-        this.$recordStatus.textContent = "";
+      this.$feedback.hidden = true;
+      if (this.$recordStatus) this.$recordStatus.textContent = "";
+    });
+    this.$ratings.addEventListener("submit", (event) => {
+      event.preventDefault();
+      if (event.submitter && !event.submitter.disabled) {
+        this.saveRating(event.submitter);
       }
     });
     this.$hint?.addEventListener("click", async () => {
@@ -179,6 +220,7 @@ class Study {
     this.$form.addEventListener("submit", (event) => {
       event.preventDefault();
       if (!this.$submit.disabled) {
+        unlockRatingSound();
         this.grade(new FormData(this.$form));
       }
     });
@@ -191,6 +233,7 @@ class Study {
     this.$record.disabled = !this.canRecord;
 
     this.$record.addEventListener("click", async () => {
+      unlockRatingSound();
       if (recording?.state === "recording") {
         this.$record.disabled = true;
         recording.stop();
@@ -365,6 +408,36 @@ class Study {
     this.$answer.readOnly = busy;
   }
 
+  async saveRating($rating) {
+    unlockRatingSound();
+    let payload = new FormData(this.$ratings);
+    payload.set("rating", $rating.value);
+    let $buttons = this.$ratings.querySelectorAll("button:not(:disabled)");
+    for (let $button of $buttons) $button.disabled = true;
+    this.$feedback.hidden = true;
+    let result;
+    try {
+      let response = await fetch(this.$ratings.action, {
+        method: "POST",
+        headers: { Accept: "application/json" },
+        body: payload,
+      });
+      result = await response.json();
+      if (!response.ok) throw new Error(result.error);
+    } catch (error) {
+      this.$feedback.classList.add("error");
+      this.$feedback.textContent =
+        error instanceof SyntaxError || error instanceof TypeError
+          ? "Die Bewertung konnte nicht bestätigt werden. Bitte lade die Karte neu."
+          : error.message;
+      this.$feedback.hidden = false;
+      for (let $button of $buttons) $button.disabled = false;
+      return;
+    }
+    window.setTimeout(() => window.location.assign(this.$ratings.action), 740);
+    playRating(result.rating);
+  }
+
   async grade(payload) {
     this.setBusy(true);
     this.$feedback.hidden = false;
@@ -414,7 +487,7 @@ class Study {
       }
       this.reveal();
       this.$next.hidden = false;
-      window.requestAnimationFrame(() => celebrateReview(result.rating));
+      window.requestAnimationFrame(() => playRating(result.rating));
     } catch (error) {
       this.$feedback.classList.add("error");
       this.$feedback.textContent =

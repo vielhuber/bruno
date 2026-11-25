@@ -57,6 +57,7 @@ $csrf = $_SESSION['csrf'];
 $flash = $_SESSION['flash'] ?? '';
 $verb = '';
 $ajaxSync = false;
+$ajaxReview = false;
 $view = 'home';
 $deckId = 0;
 $settings = ['ai' => $config['ai_key'] !== '', 'fal' => $config['fal_key'] !== '', 'sync' => $sync->isConfigured()];
@@ -172,7 +173,9 @@ function study(AnkiBridge $anki, array $request, bool $daily = false): array
 
 try {
     $verb = input($_POST, key: 'verb');
-    $ajaxSync = $verb === 'sync-now' && ($_SERVER['HTTP_ACCEPT'] ?? '') === 'application/json';
+    $isJson = ($_SERVER['HTTP_ACCEPT'] ?? '') === 'application/json';
+    $ajaxSync = $verb === 'sync-now' && $isJson;
+    $ajaxReview = $verb === 'answer' && $isJson;
     $view = input($_GET, key: 'view') ?: 'home';
     if ($view !== 'media-status' && !$ajaxSync) {
         unset($_SESSION['flash']);
@@ -566,6 +569,9 @@ try {
             if ($feedback !== null) {
                 respond($feedback + ['ratingLabel' => REVIEW_RATINGS[$rating]] + ($saved ?? []));
             }
+            if ($ajaxReview) {
+                respond(['rating' => $rating]);
+            }
             $_SESSION['reviewRating'] = $rating;
             go($daily ? 'home' : 'study', $deckId);
         }
@@ -660,7 +666,7 @@ try {
 } catch (AppException | PDOException $error) {
     $errorMessage = $error instanceof AppException ? $error->getMessage() : 'Die Anmeldung ist momentan nicht verfügbar.';
     http_response_code($error instanceof AppException ? ($error->getCode() ?: 400) : 503);
-    if ($ajaxSync || in_array($verb, ['grade', 'grade-answer', 'study-hint'], strict: true) || $view === 'media-status') {
+    if ($ajaxSync || $ajaxReview || in_array($verb, ['grade', 'grade-answer', 'study-hint'], strict: true) || $view === 'media-status') {
         respond(['error' => $errorMessage]);
     }
     if ($view === 'media') {
