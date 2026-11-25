@@ -7,7 +7,7 @@ from urllib.error import HTTPError
 from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
-from collection_store import collection, metadata, save_deck, save_media, save_note, unpack
+from collection_store import collection, metadata, mnemonic_image_job, note_deck, save_deck, save_media, save_note, unpack
 
 IMAGE_ENDPOINT = 'https://ai.rebuhleiv.xyz/v1/images/generations'
 VIDEO_ENDPOINT = 'fal-ai/veo3.1/lite'
@@ -21,6 +21,7 @@ QUEUE_APPS = {
 }
 PENDING = {'queued', 'submitting', 'working'}
 SUBMISSION_TIMEOUT = 180
+IMAGE_RETRY_DELAY = 3600
 
 
 class NoRedirect(HTTPRedirectHandler):
@@ -78,19 +79,21 @@ def result_file(result, kind):
 
 def change_job(col, deck_id, note_id, kind, expected=None, update=None, file=None):
     deck = col.decks.get(deck_id, default=False)
-    if deck is None or not metadata(deck).get('owner'):
+    if deck is None:
         return None
     meta = metadata(deck)
     note = None
     if note_id:
-        if col.db.scalar('select count(*) from cards where nid = ? and did = ?', note_id, deck_id) != 1:
+        if deck['dyn'] or not meta.get('vocabulary') or note_deck(col, note_id) != deck_id:
             return None
         note = col.get_note(note_id)
         if len(note.fields) != 2:
             return None
         back, meta = unpack(note.fields[1])
-        job = meta.get('imageJob', {})
+        job = mnemonic_image_job(meta)
     else:
+        if not meta.get('owner'):
+            return None
         job = meta.get('jobs', {}).get(kind, {})
     if not job or (expected is not None and job != expected):
         return None
@@ -108,25 +111,28 @@ def change_job(col, deck_id, note_id, kind, expected=None, update=None, file=Non
 
 def pending_jobs(col):
     jobs = []
+    vocabulary_decks = set()
+    now = time.time()
     for deck in col.decks.all():
         meta = metadata(deck)
+        if not deck['dyn'] and meta.get('vocabulary'):
+            vocabulary_decks.add(deck['id'])
         if not meta.get('owner'):
             continue
         for kind in ('audio', 'video'):
             job = meta.get('jobs', {}).get(kind, {})
             if job.get('state') in PENDING:
                 jobs.append((deck['id'], None, kind, job, job.get('prompt', meta.get('lesson', ''))))
-    for note_id in col.find_notes('tag:bruno_vocab'):
-        note = col.get_note(note_id)
-        if len(note.fields) != 2:
+    for note_id, fields in col.db.all("select id, flds from notes where flds like '%<!--bruno:%'"):
+        fields = fields.split('\x1f')
+        if len(fields) != 2:
             continue
-        _, meta = unpack(note.fields[1])
-        job = meta.get('imageJob', {})
-        if job.get('state') not in PENDING:
+        _, meta = unpack(fields[1])
+        job = mnemonic_image_job(meta)
+        if job.get('state') not in PENDING or (job['state'] == 'queued' and now < job.get('retryAt', 0)):
             continue
-        cards = note.cards()
-        if len(cards) == 1:
-            jobs.append((cards[0].did, note_id, 'image', job, job.get('prompt', '')))
+        if (deck_id := note_deck(col, note_id)) in vocabulary_decks:
+            jobs.append((deck_id, note_id, 'image', job, job.get('prompt', '')))
     return sorted(jobs, key=lambda item: item[3].get('checked', 0))
 
 
@@ -219,7 +225,9 @@ def run_jobs(directory, ai_key, fal_key):
                     elif response['status'] not in {'IN_QUEUE', 'IN_PROGRESS'}:
                         update = {'state': 'failed'}
             except HTTPError as error:
-                if state == 'queued':
+                if image_request and error.code == 429 and not job.get('retryAt'):
+                    update = {'state': 'queued', 'prompt': prompt, 'retryAt': int(time.time()) + IMAGE_RETRY_DELAY}
+                elif state == 'queued':
                     update = {'state': 'failed' if error.code in {400, 401, 403, 404, 422, 429} else 'unknown'}
                 else:
                     update = {'state': 'failed'} if error.code in {404, 410, 422} else job

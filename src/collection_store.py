@@ -18,6 +18,7 @@ from anki.decks import DEFAULT_DECK_ID
 from anki.stdmodels import get_stock_notetypes
 
 MARKER = re.compile(r'<!--bruno:([A-Za-z0-9_-]+)-->')
+MNEMONIC_MARKUP = re.compile(MARKER.pattern + r'(?:<div><strong>Eselsbrücke:</strong> .*?</div>)?', re.S)
 MEDIA_NAME = re.compile(r'bruno-(\d+)-[0-9a-f]{32}\.(?:pdf|txt|png|jpg|webp|mp3|mp4|svg)')
 ANSWER_SEPARATOR = re.compile(r'<hr[^>]+\bid=["\']?answer\b[^>]*>', re.I)
 TYPE_ANSWER = re.compile(r'\[\[type:([^\]\r\n]+)\]\]')
@@ -94,6 +95,21 @@ def save_deck(col, deck, meta):
         deck['desc'] = html.escape(meta.get('lesson', '')).replace('\n', '<br>')
     deck['bruno'] = meta
     col.decks.update(deck, preserve_usn=False)
+
+
+def mark_vocabulary_decks(col):
+    total, updated = 0, 0
+    for deck in col.decks.all():
+        if deck['dyn']:
+            continue
+        total += 1
+        meta = metadata(deck)
+        if meta.get('vocabulary') is not True:
+            meta['vocabulary'] = True
+            deck['bruno'] = meta
+            col.decks.update(deck, preserve_usn=False)
+            updated += 1
+    return {'total': total, 'updated': updated}
 
 
 def deck_list(col, owner):
@@ -187,26 +203,24 @@ def card_face(value, tags):
 
 def card_content(card):
     display = card.render_output()
-    answer = display.answer_text
     note = card.note()
-    back, note_meta = unpack(note.fields[1]) if 'bruno_vocab' in note.tags and len(note.fields) == 2 else ('', {})
-    if note_meta.get('hint'):
-        answer = back
-    else:
-        answer = ANSWER_SEPARATOR.split(answer, maxsplit=1)[-1]
-        if answer.startswith(display.question_text):
-            answer = answer[len(display.question_text):]
-    typed = TYPE_ANSWER.search(answer)
-    question, question_media = card_face(TYPE_ANSWER.sub('', display.question_text), display.question_av_tags)
-    answer, answer_media = card_face(TYPE_ANSWER.sub('', answer), display.answer_av_tags)
+    _, note_meta = unpack(note.fields[1]) if len(note.fields) == 2 else ('', {})
+    question_markup = MNEMONIC_MARKUP.sub('', display.question_text) if note_meta else display.question_text
+    answer_markup = MNEMONIC_MARKUP.sub('', display.answer_text) if note_meta else display.answer_text
+    answer_markup = ANSWER_SEPARATOR.split(answer_markup, maxsplit=1)[-1]
+    if answer_markup.startswith(question_markup):
+        answer_markup = answer_markup[len(question_markup):]
+    typed = TYPE_ANSWER.search(answer_markup)
+    question, question_media = card_face(TYPE_ANSWER.sub('', question_markup), display.question_av_tags)
+    answer, answer_media = card_face(TYPE_ANSWER.sub('', answer_markup), display.answer_av_tags)
     if typed and not answer and typed[1] in note:
-        answer, typed_media = card_face(note[typed[1]], ())
+        answer, typed_media = card_face(MNEMONIC_MARKUP.sub('', note[typed[1]]), ())
         answer_media.extend(item for item in typed_media if item not in answer_media)
     return {
         'question': question, 'questionMedia': question_media,
         'answer': answer, 'answerMedia': [item for item in answer_media if item not in question_media],
         'hint': note_meta.get('hint', ''), 'image': note_meta.get('image', ''),
-        'imageState': note_meta.get('imageJob', {}).get('state', ''),
+        'imageState': mnemonic_image_job(note_meta).get('state', ''),
     }
 
 
@@ -227,6 +241,7 @@ def study(col, deck):
         result['card'] = card_content(card) | {
             'id': card.id, 'reps': card.reps, 'modified': card.mod,
             'intervals': list(col.sched.describe_next_states(queued.states)),
+            'mnemonicState': card_mnemonic_state(col, deck, card),
         }
     return result
 
@@ -247,7 +262,7 @@ def save_media(col, deck_id, extension, content):
     return col.media.write_data(f'bruno-{deck_id}-{digest}.{extension}', content)
 
 
-def note_back(back, meta):
+def save_note(col, note, back, meta):
     markup = ''
     if meta.get('hint'):
         hint = html.escape(meta['hint'])
@@ -255,12 +270,56 @@ def note_back(back, meta):
         if meta.get('image'):
             markup += f'<br><img src="{html.escape(meta["image"], quote=True)}" alt="Illustration zur Eselsbrücke">'
         markup += '</div>'
-    return pack(back, meta) + markup
-
-
-def save_note(col, note, back, meta):
-    note.fields[1] = note_back(back, meta)
+        templates = note.note_type()['tmpls']
+        answer_field = re.escape(note.keys()[1])
+        if len(templates) != 1 or re.search(r'{{[^{}]*\b' + answer_field + r'\s*}}', templates[0]['qfmt']):
+            # Anki still tracks media references inside comments, without showing them on question faces.
+            markup = f'<!--{markup}-->'
+    note.fields[1] = pack(back, meta) + markup
     col.update_note(note)
+
+
+def note_deck(col, note_id):
+    return col.db.scalar('''
+        select min(deck) from (select coalesce(nullif(odid, 0), did) as deck from cards where nid = ?)
+        having min(deck) = max(deck)
+    ''', note_id)
+
+
+def vocabulary_pair(note):
+    if note.keys() not in (['Front', 'Back'], ['Vorderseite', 'Rückseite']):
+        return None
+    front, back = clean(note.fields[0]), clean(unpack(note.fields[1])[0])
+    if front and back and len(front) <= 500 and len(back) <= 1500:
+        return {'front': front, 'back': back}
+    return None
+
+
+def mnemonic_state(note_meta):
+    if note_meta.get('hint'):
+        return ''
+    if note_meta.get('mnemonicRetryAt'):
+        return 'queued'
+    return note_meta.get('mnemonicState', 'queued')
+
+
+def mnemonic_image_job(note_meta):
+    if note_meta.get('image'):
+        return {'state': 'ready'}
+    job = note_meta.get('imageJob', {})
+    if not job and (hint := note_meta.get('hint')):
+        return {'state': 'queued', 'prompt': 'Bilde die konkrete Szene dieses Merksatzes ab: ' + hint}
+    return job
+
+
+def card_mnemonic_state(col, deck, card):
+    if not metadata(deck).get('vocabulary'):
+        return ''
+    note = card.note()
+    if not vocabulary_pair(note) or note_deck(col, note.id) != deck['id']:
+        return ''
+    _, note_meta = unpack(note.fields[1])
+    return mnemonic_state(note_meta)
 
 
 def ensure_deck_name_available(col, title, deck_id=None):
@@ -328,10 +387,7 @@ def generate(col, owner, request):
             note.fields[0] = html.escape(item['front']).replace('\n', '<br>')
             back = html.escape(item['back']).replace('\n', '<br>')
             note.tags = ['bruno_vocab' if request['vocabulary'] else 'bruno']
-            note.fields[1] = note_back(back, {
-                'hint': item['hint'],
-                'imageJob': {'state': 'queued', 'prompt': item['imagePrompt']},
-            }) if request['vocabulary'] else back
+            note.fields[1] = back
             notes.append(AddNoteRequest(note, deck_id))
         if notes:
             col.add_notes(notes)
@@ -352,23 +408,6 @@ def generate(col, owner, request):
         raise
     col.merge_undo_entries(undo)
     return {'id': deck_id, 'added': len(items)}
-
-
-def image_progress(col, deck):
-    progress = {'total': 0, 'ready': 0, 'pending': 0}
-    if metadata(deck).get('vocabulary') is not True:
-        return progress
-    for note_id in col.find_notes(f'did:{deck["id"]} tag:bruno_vocab'):
-        fields = col.get_note(note_id).fields
-        if len(fields) != 2:
-            continue
-        _, meta = unpack(fields[1])
-        if not meta.get('hint'):
-            continue
-        progress['total'] += 1
-        progress['ready'] += bool(meta.get('image'))
-        progress['pending'] += meta.get('imageJob', {}).get('state') in {'queued', 'submitting', 'working'}
-    return progress
 
 
 def lesson(col, deck):
@@ -406,7 +445,7 @@ def retry_image(col, deck, card_id):
     if col.db.scalar('select did from cards where id = ?', card_id) != deck['id']:
         raise Rejected('Karte nicht gefunden.', 404)
     note = col.get_card(card_id).note()
-    if len(note.fields) != 2 or 'bruno_vocab' not in note.tags:
+    if len(note.fields) != 2 or note_deck(col, note.id) != deck['id']:
         raise Rejected('Für diese Karte gibt es keinen Bildauftrag.', 422)
     back, meta = unpack(note.fields[1])
     job = meta.get('imageJob', {})

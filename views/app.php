@@ -72,7 +72,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <?php if (in_array($view, ['home', 'study'], strict: true) && $account !== null): ?>
         <script defer src="/assets/canvas-confetti-1.9.4.js"></script>
     <?php endif; ?>
-    <script defer src="/assets/app.js?v=32"></script>
+    <script defer src="/assets/app.js?v=33"></script>
 </head>
 <body class="<?= $account === null ? 'guest' : 'signed-in' ?>">
 <?php if ($account === null): ?>
@@ -223,6 +223,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                 <a class="back-link" href="<?= $route('decks') ?>"><?= $actionLabel(text: 'Stapel verwalten', emoji: '⬅️') ?></a>
                 <header class="screen-header">
                     <div><h1><?= escape($label) ?></h1><p class="small muted"><?= $cardCount ?> <?= $cardCount === 1 ? 'Karte' : 'Karten' ?></p></div>
+                    <a class="button secondary" href="<?= $route('lesson', $deckId) ?>"><?= $actionLabel(text: 'Lernmaterial', emoji: '📚') ?></a>
                 </header>
                 <?php if ($cardCount === 0): ?>
                     <p class="panel muted">Noch keine Karten.</p>
@@ -499,10 +500,6 @@ if ($view === 'create' && !isset($_POST['type'])) {
                                 <h2>Karte <?= $index + 1 ?></h2>
                                 <div><h3>Vorderseite</h3><p class="preline"><?= escape($card['front']) ?></p></div>
                                 <div><h3>Rückseite</h3><p class="preline"><?= escape($card['back']) ?></p></div>
-                                <?php if ($proposal['vocabulary']): ?>
-                                    <div><p class="preline"><?= escape($card['hint']) ?></p></div>
-                                    <div><h3>Bildidee</h3><p class="preline"><?= escape($card['imagePrompt']) ?></p></div>
-                                <?php endif; ?>
                             </article>
                         <?php endforeach; ?>
                     </div>
@@ -574,8 +571,9 @@ if ($view === 'create' && !isset($_POST['type'])) {
                     </section>
                     <?php if ($imageProgress['total'] > 0): ?>
                         <section class="lesson-media">
-                            <h3>Merkbilder</h3>
-                            <p class="muted small" role="status" data-image-progress><?= $imageProgress['ready'] ?> von <?= $imageProgress['total'] ?> fertig.</p>
+                            <h3>Eselsbrücken</h3>
+                            <p class="muted small" role="status" data-mnemonic-progress><?= $imageProgress['texts'] ?> von <?= $imageProgress['total'] ?> Merksätze · <?= $imageProgress['ready'] ?> von <?= $imageProgress['total'] ?> Merkbilder</p>
+                            <p class="muted small" role="status" data-mnemonic-problems><?= $imageProgress['pending'] ? $imageProgress['pending'] . ' ausstehend. ' : '' ?><?= $imageProgress['failed'] ? $imageProgress['failed'] . ' fehlgeschlagen. ' : '' ?><?= $imageProgress['unknown'] ? $imageProgress['unknown'] . ' Bildaufträge mit unklarem Status.' : '' ?></p>
                         </section>
                     <?php endif; ?>
                     <?php if ($lesson['sources']): ?>
@@ -641,9 +639,10 @@ if ($view === 'create' && !isset($_POST['type'])) {
                     $signature = hash_hmac('sha256', implode(':', [...$cardFields, $shown]), $_SESSION['reviewSecret']);
                     $reviewFields = $cardFields + ['shown' => $shown, 'signature' => $signature, 'reversed' => (int) $data['reversed']];
                     $canGrade = $settings['ai'] && $card['question'] !== '' && $card['answer'] !== '';
-                    $hasMnemonic = $card['hint'] !== '';
                     $imageState = $card['imageState'];
-                    $imagePending = in_array($imageState, PENDING_MEDIA_STATES, strict: true);
+                    $mnemonicState = $card['mnemonicState'] ?: $imageState;
+                    $mnemonicPending = in_array($mnemonicState, PENDING_MEDIA_STATES, strict: true);
+                    $hasMnemonic = $card['hint'] !== '' || $mnemonicState !== '';
                     ?>
                     <div class="study" data-study>
                         <article class="panel flashcard">
@@ -679,20 +678,20 @@ if ($view === 'create' && !isset($_POST['type'])) {
                                 <?php endif; ?>
                             </section>
                             <?php if ($hasMnemonic): ?>
-                                <div id="study-mnemonic" class="mnemonic" <?= $data['hintUsed'] ? '' : 'hidden' ?> data-study-mnemonic <?= $imagePending ? 'data-media-status="' . $route('media-status', $deckId, ['card' => $card['id']]) . '"' : '' ?>>
+                                <div id="study-mnemonic" class="mnemonic" <?= $data['hintUsed'] ? '' : 'hidden' ?> data-study-mnemonic <?= $mnemonicPending ? 'data-media-status="' . $route('media-status', $deckId, ['card' => $card['id']]) . '"' : '' ?>>
                                     <div data-mnemonic-details hidden>
-                                        <p><?= escape($card['hint']) ?></p>
-                                        <?php if ($card['image'] === '' && isset(MEDIA_STAGE_LABELS[$imageState])): ?>
-                                            <p class="small muted" role="status">Merkbild: <span data-media-stage><?= MEDIA_STAGE_LABELS[$imageState] ?></span></p>
+                                        <p data-mnemonic-text><?= escape($card['hint']) ?></p>
+                                        <?php if (isset(MEDIA_STAGE_LABELS[$mnemonicState])): ?>
+                                            <p class="small muted" role="status" data-media-stage><?= MEDIA_STAGE_LABELS[$mnemonicState] ?></p>
                                         <?php endif; ?>
-                                        <?php if ($settings['ai'] && ($imageState === 'failed' || $imagePending)): ?>
+                                        <?php if ($settings['ai'] && ($imageState === 'failed' || $mnemonicPending)): ?>
                                             <form method="post" action="<?= $studyUrl ?>" data-media-retry <?= $imageState === 'failed' ? '' : 'hidden' ?>>
                                                 <?php $hidden(verb: 'retry-image', fields: $cardFields); ?>
                                                 <button class="button secondary" type="submit"><?= $actionLabel(text: 'Bild erneut generieren', emoji: '🖼️') ?></button>
                                             </form>
                                         <?php endif; ?>
                                     </div>
-                                    <?php if ($card['image'] !== '' || $imagePending): ?>
+                                    <?php if ($card['image'] !== '' || $mnemonicPending): ?>
                                         <img <?= $card['image'] !== '' ? 'src="' . $mediaUrl($deckId, $card['image'], $card['id']) . '"' : 'hidden' ?> alt="Illustration zur Eselsbrücke" loading="lazy" data-mnemonic-image>
                                     <?php endif; ?>
                                 </div>

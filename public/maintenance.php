@@ -37,7 +37,7 @@ try {
     $result = match ($job) {
         'backup' => $anki->call('backup'),
         'sync' => $sync->run(),
-        'media' => $anki->call('jobs', ['aiKey' => $config['ai_key'], 'falKey' => $config['fal_key']]),
+        'media' => (new MediaWorker($anki, new Gateway($config['ai_key'], $config['ai_model']), $config['data_dir'], $config['ai_key'], $config['fal_key']))->run(),
     };
     echo json_encode($result, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
 } catch (AppException $error) {

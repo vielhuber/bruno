@@ -35,8 +35,9 @@ try {
             initialUpload: ($argv[2] ?? '') === '--initial-upload',
         ),
         'backup' => $anki->call('backup'),
-        'media' => $anki->call('jobs', ['aiKey' => $config['ai_key'], 'falKey' => $config['fal_key']]),
-        default => throw new AppException('Kommandos: user, assign, sync-login, sync, backup, media.'),
+        'mark-vocabulary-decks' => $anki->call('mark-vocabulary-decks'),
+        'media' => (new MediaWorker($anki, new Gateway($config['ai_key'], $config['ai_model']), $config['data_dir'], $config['ai_key'], $config['fal_key']))->run(),
+        default => throw new AppException('Kommandos: user, assign, sync-login, sync, backup, media, mark-vocabulary-decks.'),
     };
     echo json_encode($result, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR), PHP_EOL;
 } catch (AppException $error) {

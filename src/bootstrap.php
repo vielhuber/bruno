@@ -17,6 +17,7 @@ require_once __DIR__ . '/Upload.php';
 require_once __DIR__ . '/GatewayGemini.php';
 require_once __DIR__ . '/GatewayCodex.php';
 require_once __DIR__ . '/Gateway.php';
+require_once __DIR__ . '/MediaWorker.php';
 
 umask(0o077);
 $config = array_replace(

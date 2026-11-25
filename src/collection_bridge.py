@@ -11,10 +11,12 @@ from anki.decks import DEFAULT_DECK_ID
 from anki.sync_pb2 import SyncAuth
 
 from collection_store import (
-    Rejected, answer_card, card_content, collection, deck_list, ensure_deck_name_available, generate,
-    image_progress, lesson, media_path, metadata, owned_deck, queue_video, retry_image, save_deck, study, writable_deck,
+    Rejected, answer_card, card_content, card_mnemonic_state, collection, deck_list, ensure_deck_name_available,
+    generate, lesson, mark_vocabulary_decks, media_path, metadata, owned_deck, queue_video, retry_image, save_deck,
+    study, writable_deck,
 )
 from media_jobs import VIDEO_ENDPOINT, VIDEO_USD_PER_CLIP, run_jobs
+from mnemonic_jobs import claim_mnemonics, finish_mnemonics, mnemonic_progress
 
 
 def backup(col, directory, manual=False):
@@ -81,6 +83,12 @@ def dispatch(directory, request):
             return backup(col, directory, manual=request.get('manual', False))
         if action == 'sync':
             return sync(col, directory, request)
+        if action == 'mark-vocabulary-decks':
+            return mark_vocabulary_decks(col)
+        if action == 'claim-mnemonics':
+            return claim_mnemonics(col)
+        if action == 'finish-mnemonics':
+            return finish_mnemonics(col, request['batch'], request['results'])
         owner = request['owner']
         if action == 'assign':
             deck = col.decks.by_name(request['name'])
@@ -135,18 +143,22 @@ def dispatch(directory, request):
         if action == 'lesson':
             material = lesson(col, deck)
             material['estimatedVideoCost'] = VIDEO_USD_PER_CLIP
-            material['imageProgress'] = image_progress(col, deck)
+            material['imageProgress'] = mnemonic_progress(col, deck)
             return material
         if action == 'media-status':
             if not (card_id := request['card']):
                 return {
                     'state': metadata(deck).get('jobs', {}).get('video', {}).get('state', ''),
-                    'images': image_progress(col, deck),
+                    'images': mnemonic_progress(col, deck),
                 }
             if col.db.scalar('select did from cards where id = ?', card_id) != deck['id']:
                 raise Rejected('Karte nicht gefunden.', 404)
-            card = card_content(col.get_card(card_id))
-            return {'state': card['imageState'], 'file': card['image']}
+            anki_card = col.get_card(card_id)
+            card = card_content(anki_card)
+            return {
+                'state': card_mnemonic_state(col, deck, anki_card) or card['imageState'],
+                'file': card['image'], 'text': card['hint'], 'retryImage': card['imageState'] == 'failed',
+            }
         if action == 'queue-video':
             return queue_video(col, deck, VIDEO_ENDPOINT)
         if action == 'retry-image':

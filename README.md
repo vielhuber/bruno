@@ -29,7 +29,7 @@ Beim Erstellen sind 1 bis 250 Karten wählbar (Standard: 10). Die KI liest bis z
 
 Ein separates Login-Cookie hält die Anmeldung 30 Tage lang ab dem Login, auch nach einem Deployment. Alle angemeldeten Konten können unter „Benutzer“ Konten verwalten und Passwörter zurücksetzen. Das eigene Profil ist über die E-Mail-Adresse im Menü erreichbar. Beim Löschen bleiben Anki-Stapel erhalten. Das letzte Konto lässt sich nicht löschen.
 
-Für jede freigegebene Vokabelkarte erzeugt `ai.rebuhleiv.xyz` ein Merkbild. Es erscheint mit dem kurzen Merksatz auf der Rückseite der Karte, auch in Anki.
+Nach dem Speichern ergänzt der Media-Cron fehlende Merksätze und Merkbilder automatisch in allen als Vokabeln gekennzeichneten Stapeln. Vorhandene Merksätze und Bilder bleiben erhalten. Der Media-Cron verarbeitet bis zu zehn Merksätze und startet höchstens ein Merkbild pro Lauf. Bei einfachen Vorder-/Rückseitenkarten erscheinen beide auch auf der Anki-Rückseite. Bei Kartenvorlagen, die das Antwortfeld in der Frage verwenden, bleiben sie in bruno sichtbar.
 
 ## Anki
 
@@ -44,6 +44,8 @@ php bin/bruno.php assign lerner@example.org 'Name des vorhandenen Stapels'
 ```
 
 Nur reguläre Stapel ohne Unterstapel können zugewiesen werden. Neue Stapel gehören automatisch dem erstellenden Konto. Bestehende Karten bleiben bei Ergänzungen unverändert. Bei einem vollständigen Sync-Konflikt wird nichts überschrieben. `sync --initial-upload` erlaubt ausschließlich einen von Anki als Upload gekennzeichneten Erstabgleich.
+
+`php bin/bruno.php mark-vocabulary-decks` markiert alle vorhandenen regulären Anki-Stapel als Vokabeln, auch Unterstapel und nicht zugewiesene Stapel. Die Zuordnung, Sichtbarkeit und Lernstände bleiben unverändert.
 
 Beispiel für den Benutzer-Crontab (absolute Pfade anpassen):
 

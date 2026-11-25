@@ -449,7 +449,9 @@ class MediaStatus {
 
   ready() {
     let $stage = this.$root.querySelector("[data-media-stage]");
-    let $progress = this.$root.querySelector("[data-image-progress]");
+    let $progress = this.$root.querySelector("[data-mnemonic-progress]");
+    let $problems = this.$root.querySelector("[data-mnemonic-problems]");
+    let $text = this.$root.querySelector("[data-mnemonic-text]");
     let $image = this.$root.querySelector("[data-mnemonic-image]");
     let $retry = this.$root.querySelector("[data-media-retry]");
     let check = async () => {
@@ -473,19 +475,30 @@ class MediaStatus {
             if ($stage && $stage.textContent !== result.label) {
               $stage.textContent = result.label;
             }
-            if ($progress) {
-              let progress = `${result.images.ready} von ${result.images.total} fertig.`;
+            if ($progress && result.images) {
+              let { total, texts, ready, pending, failed, unknown } =
+                result.images;
+              let progress = `${texts} von ${total} Merksätze · ${ready} von ${total} Merkbilder`;
               if ($progress.textContent !== progress) {
                 $progress.textContent = progress;
               }
+              let problems =
+                (pending ? `${pending} ausstehend. ` : "") +
+                (failed ? `${failed} fehlgeschlagen. ` : "") +
+                (unknown ? `${unknown} Bildaufträge mit unklarem Status.` : "");
+              if ($problems.textContent !== problems)
+                $problems.textContent = problems;
+            }
+            if ($text && result.text && $text.textContent !== result.text) {
+              $text.textContent = result.text;
             }
             if ($image && result.url) {
               $image.src = result.url;
               $image.hidden = false;
-              $stage.parentElement.hidden = true;
+              if ($stage && !result.label) $stage.hidden = true;
             }
             if ($retry) {
-              $retry.hidden = result.state !== "failed";
+              $retry.hidden = !result.retryImage;
             }
             if (!result.pending && !result.images?.pending) {
               return;
