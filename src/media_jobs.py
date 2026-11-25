@@ -3,11 +3,15 @@ import fcntl
 import json
 import re
 import time
+from collections import Counter
 from urllib.error import HTTPError
 from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
-from collection_store import collection, metadata, mnemonic_image_job, note_deck, save_deck, save_media, save_note, unpack
+from collection_store import (
+    VOCABULARY_FIELDS, collection, metadata, mnemonic_image_job, mnemonic_state, note_deck,
+    save_deck, save_media, save_note, unpack, vocabulary_text,
+)
 
 IMAGE_ENDPOINT = 'https://ai.rebuhleiv.xyz/v1/images/generations'
 VIDEO_ENDPOINT = 'fal-ai/veo3.1/lite'
@@ -136,6 +140,54 @@ def pending_jobs(col):
     return sorted(jobs, key=lambda item: item[3].get('checked', 0))
 
 
+def generation_backlog(col):
+    counts = {kind: Counter() for kind in ('text', 'image', 'video', 'audio')}
+    vocabulary_decks = set()
+    for deck in col.decks.all():
+        meta = metadata(deck)
+        if not deck['dyn'] and meta.get('vocabulary'):
+            vocabulary_decks.add(deck['id'])
+        if not meta.get('owner'):
+            continue
+        for kind in ('video', 'audio'):
+            job = meta.get('jobs', {}).get(kind)
+            if job:
+                counts[kind][job['state']] += 1
+            elif meta.get(kind):
+                counts[kind]['ready'] += 1
+
+    vocabulary_models = {
+        model['id'] for model in col.models.all() if [field['name'] for field in model['flds']] in VOCABULARY_FIELDS
+    }
+    for model, fields, deck_id in col.db.all('''
+        select notes.mid, notes.flds, membership.deck from notes join (
+            select nid, min(coalesce(nullif(odid, 0), did)) as deck from cards group by nid
+            having min(coalesce(nullif(odid, 0), did)) = max(coalesce(nullif(odid, 0), did))
+        ) as membership on membership.nid = notes.id
+    '''):
+        if deck_id not in vocabulary_decks:
+            continue
+        fields = fields.split('\x1f')
+        if len(fields) != 2:
+            continue
+        back, meta = unpack(fields[1])
+        eligible = model in vocabulary_models and vocabulary_text(fields[0], back) is not None
+        if eligible:
+            counts['text'][mnemonic_state(meta) or 'ready'] += 1
+        image = mnemonic_image_job(meta)
+        if image or eligible:
+            counts['image'][image.get('state', 'waiting')] += 1
+
+    return {
+        kind: {
+            'missing': sum(states.values()) - states['ready'], 'ready': states['ready'],
+            'queued': states['queued'], 'waiting': states['waiting'], 'working': states['working'] + states['submitting'],
+            'failed': states['failed'], 'unknown': states['unknown'],
+        }
+        for kind, states in counts.items()
+    }
+
+
 def run_jobs(directory, ai_key, fal_key):
     if not (ai_key or fal_key):
         return {'configured': False}
@@ -149,6 +201,8 @@ def run_jobs(directory, ai_key, fal_key):
             jobs = pending_jobs(col)
         headers = {'Authorization': 'Key ' + fal_key, 'Content-Type': 'application/json', 'X-Fal-Store-IO': '0'}
         handled = 0
+        completed = Counter()
+        issues = 0
         image_requested = False
         for deck_id, note_id, kind, job, prompt in jobs:
             if handled >= 8:
@@ -158,13 +212,13 @@ def run_jobs(directory, ai_key, fal_key):
             # Only poll legacy submissions; their old forms did not authorize the new video price.
             if state == 'queued' and (kind == 'audio' or (kind == 'video' and job.get('model') != VIDEO_ENDPOINT)):
                 with collection(directory) as col:
-                    change_job(col, deck_id, note_id, kind, job, {'state': 'failed'})
+                    issues += bool(change_job(col, deck_id, note_id, kind, job, {'state': 'failed'}))
                 handled += 1
                 continue
             if state == 'submitting':
                 if time.time() - job.get('started', 0) > SUBMISSION_TIMEOUT:
                     with collection(directory) as col:
-                        change_job(col, deck_id, note_id, kind, job, job | {'state': 'unknown'})
+                        issues += bool(change_job(col, deck_id, note_id, kind, job, job | {'state': 'unknown'}))
                 continue
             image_request = kind == 'image' and state == 'queued'
             if not (ai_key if image_request else fal_key) or (image_request and image_requested):
@@ -238,6 +292,11 @@ def run_jobs(directory, ai_key, fal_key):
             if update['state'] in {'failed', 'unknown'}:
                 update = update | {'prompt': prompt}
             with collection(directory) as col:
-                change_job(col, deck_id, note_id, kind, expected, update, file)
+                if change_job(col, deck_id, note_id, kind, expected, update, file):
+                    completed[kind] += bool(file)
+                    issues += update['state'] in {'failed', 'unknown'} or 'retryAt' in update
             handled += 1
-        return {'processed': handled}
+        return {
+            'processed': handled, 'images': completed['image'], 'videos': completed['video'],
+            'audios': completed['audio'], 'issues': issues,
+        }

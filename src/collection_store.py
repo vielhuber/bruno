@@ -23,6 +23,7 @@ MEDIA_NAME = re.compile(r'bruno-(\d+)-[0-9a-f]{32}\.(?:pdf|txt|png|jpg|webp|mp3|
 ANSWER_SEPARATOR = re.compile(r'<hr[^>]+\bid=["\']?answer\b[^>]*>', re.I)
 TYPE_ANSWER = re.compile(r'\[\[type:([^\]\r\n]+)\]\]')
 AV_MARKER = re.compile(r'\[(?:sound:([^\]]*)|anki:play:[^\]]*)\]')
+VOCABULARY_FIELDS = (['Front', 'Back'], ['Vorderseite', 'Rückseite'])
 MEDIA_TYPES = {
     'png': 'image/png', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'gif': 'image/gif',
     'webp': 'image/webp', 'avif': 'image/avif',
@@ -288,9 +289,13 @@ def note_deck(col, note_id):
 
 
 def vocabulary_pair(note):
-    if note.keys() not in (['Front', 'Back'], ['Vorderseite', 'Rückseite']):
+    if note.keys() not in VOCABULARY_FIELDS:
         return None
-    front, back = clean(note.fields[0]), clean(unpack(note.fields[1])[0])
+    return vocabulary_text(note.fields[0], unpack(note.fields[1])[0])
+
+
+def vocabulary_text(front, back):
+    front, back = clean(front), clean(back)
     if front and back and len(front) <= 500 and len(back) <= 1500:
         return {'front': front, 'back': back}
     return None
@@ -342,7 +347,7 @@ def generate(col, owner, request):
 
     basic_models = [
         model for model in col.models.all()
-        if [field['name'] for field in model['flds']] in (['Front', 'Back'], ['Vorderseite', 'Rückseite'])
+        if [field['name'] for field in model['flds']] in VOCABULARY_FIELDS
         and len(model['tmpls']) == 1 and model['type'] == 0
     ]
     basic = None

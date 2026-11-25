@@ -67,6 +67,7 @@ def claim_mnemonics(col):
 
 def finish_mnemonics(col, batch, results):
     saved = 0
+    issues = 0
     for index, item in enumerate(batch['cards']):
         deck_id, note_id = item['deck'], item['note']
         deck = col.decks.get(deck_id, default=False)
@@ -89,8 +90,9 @@ def finish_mnemonics(col, batch, results):
             note.add_tag('bruno_vocab')
             saved += 1
         else:
+            issues += 1
             note_meta['mnemonicState'] = 'failed'
             if not note_meta.get('mnemonicRetried'):
                 note_meta['mnemonicRetryAt'] = int(time.time()) + RETRY_DELAY
         save_note(col, note, back, note_meta)
-    return saved
+    return {'mnemonics': saved, 'issues': issues}

@@ -46,6 +46,7 @@ $label = match ($view) {
     'learn', 'lesson' => 'Lernen',
     'backups' => 'Backups',
     'sync' => 'Anki-Sync',
+    'cron' => 'Cronjob',
     'users' => 'Benutzer',
     'profile' => 'Mein Profil',
     default => 'Übersicht',
@@ -144,6 +145,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                         <a href="<?= $route('users') ?>" <?= $view === 'users' ? 'aria-current="page"' : '' ?>><?= $actionLabel(text: 'Benutzer', emoji: '👥') ?></a>
                         <a href="<?= $route('backups') ?>" <?= $view === 'backups' ? 'aria-current="page"' : '' ?>><?= $actionLabel(text: 'Backups', emoji: '💾') ?></a>
                         <a href="<?= $route('sync') ?>" <?= $view === 'sync' ? 'aria-current="page"' : '' ?>><?= $actionLabel(text: 'Anki-Sync', emoji: '🔄') ?></a>
+                        <a href="<?= $route('cron') ?>" <?= $view === 'cron' ? 'aria-current="page"' : '' ?>><?= $actionLabel(text: 'Cronjob', emoji: '⏱️') ?></a>
                         <button type="button" aria-expanded="false" aria-controls="install-help" data-install><?= $actionLabel(text: 'App installieren', emoji: '📲') ?></button>
                         <form method="post" action="/">
                             <?php $hidden(verb: 'logout'); ?>
@@ -375,6 +377,9 @@ if ($view === 'create' && !isset($_POST['type'])) {
                     <button class="button secondary" type="submit" <?= $syncStatus['running'] ? 'disabled' : '' ?>><?= $actionLabel(text: 'Intervall speichern', emoji: '⏱️') ?></button>
                 </form>
             <?php break;
+                case 'cron':
+                    require __DIR__ . '/cron.php';
+                    break;
                 case 'profile': ?>
                 <header class="screen-header"><h1>Mein Profil</h1></header>
                 <form class="panel form-grid" method="post" action="<?= $route('profile') ?>">

@@ -57,6 +57,8 @@ Beispiel für den Benutzer-Crontab (absolute Pfade anpassen):
 
 Bei Hosting ohne Benutzer-Crontab können dieselben Aufträge per HTTPS auf `/maintenance.php?job=sync`, `job=media` und `job=backup` geplant werden. HTTP-Basic-Benutzer: `bruno-cron`. Ein zufälliges, separates Passwort verwenden und nur dessen SHA-256-Hash als `cron_password_hash` hinterlegen. Die URLs enthalten keine Zugangsdaten.
 
+Unter „Cronjob“ stehen die letzten geplanten Läufe, ihre Ergebnisse und die noch offenen Generierungsaufträge. Das Protokoll beginnt mit der Einführung der Ansicht und speichert keine Karteninhalte oder Zugangsdaten.
+
 Unter „Anki-Sync“ lassen sich Status und letzter erfolgreicher Abgleich sehen, ein manueller Lauf starten und das gemeinsame Intervall einstellen. Den Sync-Cronjob alle 30 Minuten aufrufen. Bei einem längeren Intervall überspringt bruno zu frühe Aufrufe, ohne Anki zu öffnen.
 
 Die täglichen `.colpkg`-Backups enthalten die Sammlung samt Medien. Alle angemeldeten Konten können unter „Backups“ zusätzliche Sicherungen anlegen und einzelne Backups nach Bestätigung löschen. Die Zugangsdatenbank separat privat sichern. Medien liegen in Ankis `collection.media`, nicht in einer zusätzlichen Ablage von bruno. Stapel-Audio, -Video und Vorlagen sind in den Stapelmetadaten verlinkt; Ankis Funktion zum Löschen ungenutzter Medien kann sie als ungenutzt einstufen. Offline werden keine privaten Stapel zwischengespeichert. Frontend-Grundstruktur: [boilerplate](https://github.com/vielhuber/boilerplate/tree/061b7cd5270cfb0eca2d738abf7db7c4567efc60).

@@ -37,7 +37,7 @@ final class MediaWorker
         }
         try {
             if (!flock($lock, LOCK_EX | LOCK_NB)) {
-                return $result;
+                return $result + ['busy' => true];
             }
             $batch = $this->anki->call('claim-mnemonics');
             if (!$batch['cards']) {
@@ -48,10 +48,11 @@ final class MediaWorker
             try {
                 $mnemonics = $this->gateway->mnemonics($cards);
             } finally {
-                $saved = $this->anki->call('finish-mnemonics', ['batch' => $batch, 'results' => (object) $mnemonics]);
+                $textResult = $this->anki->call('finish-mnemonics', ['batch' => $batch, 'results' => (object) $mnemonics]);
             }
+            $result['issues'] = ($result['issues'] ?? 0) + $textResult['issues'];
 
-            return $result + ['mnemonics' => $saved];
+            return $result + ['mnemonics' => $textResult['mnemonics']];
         } finally {
             fclose($lock);
         }

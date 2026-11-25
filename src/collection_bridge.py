@@ -15,7 +15,7 @@ from collection_store import (
     generate, lesson, mark_vocabulary_decks, media_path, metadata, owned_deck, queue_video, retry_image, save_deck,
     study, writable_deck,
 )
-from media_jobs import VIDEO_ENDPOINT, VIDEO_USD_PER_CLIP, run_jobs
+from media_jobs import VIDEO_ENDPOINT, VIDEO_USD_PER_CLIP, generation_backlog, run_jobs
 from mnemonic_jobs import claim_mnemonics, finish_mnemonics, mnemonic_progress
 
 
@@ -26,14 +26,15 @@ def backup(col, directory, manual=False):
     day = now.date().isoformat()
     stamp = f'{day}-{now:%H%M%S-%f}-manual' if manual else day
     filename = target / f'{stamp}.colpkg'
-    if not filename.exists():
-        temporary = target / f'.{stamp}.partial'
-        try:
-            col.export_collection_package(str(temporary), include_media=True, legacy=False)
-            temporary.replace(filename)
-        finally:
-            temporary.unlink(missing_ok=True)
-    return {'date': day}
+    if filename.exists():
+        return {'date': day, 'created': False}
+    temporary = target / f'.{stamp}.partial'
+    try:
+        col.export_collection_package(str(temporary), include_media=True, legacy=False)
+        temporary.replace(filename)
+    finally:
+        temporary.unlink(missing_ok=True)
+    return {'date': day, 'created': True}
 
 
 def sync(col, directory, request):
@@ -85,6 +86,8 @@ def dispatch(directory, request):
             return sync(col, directory, request)
         if action == 'mark-vocabulary-decks':
             return mark_vocabulary_decks(col)
+        if action == 'cron-backlog':
+            return generation_backlog(col)
         if action == 'claim-mnemonics':
             return claim_mnemonics(col)
         if action == 'finish-mnemonics':

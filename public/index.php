@@ -649,8 +649,16 @@ try {
         'study' => study($anki, $request),
         'backups' => ['backups' => $backupHistory->entries()],
         'sync' => ['sync' => $sync->status()],
+        'cron' => ['runs' => (new CronHistory($config['data_dir']))->recent()],
         default => throw new AppException('Diese Seite gibt es nicht.', 404),
     };
+    if ($view === 'cron') {
+        try {
+            $data['backlog'] = $anki->call('cron-backlog');
+        } catch (AppException) {
+            $data['backlog'] = null;
+        }
+    }
     if ($view === 'home' || $view === 'study') {
         $data['reviewRating'] = $_SESSION['reviewRating'] ?? null;
         unset($_SESSION['reviewRating']);
