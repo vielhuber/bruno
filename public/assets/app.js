@@ -1,11 +1,10 @@
 let launchConfetti;
 let ratingAudio;
 
-function celebrateReview(rating) {
+function celebrationCanvas() {
   if (
     !window.confetti ||
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
-    (rating <= 2 && !window.OffscreenCanvas?.prototype.transferToImageBitmap)
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
   ) {
     return;
   }
@@ -14,10 +13,19 @@ function celebrateReview(rating) {
     useWorker: false,
     disableForReducedMotion: true,
   });
+  return launchConfetti;
+}
+
+function celebrateReview(rating) {
+  if (rating <= 2 && !window.OffscreenCanvas?.prototype.transferToImageBitmap) {
+    return;
+  }
+  let burst = celebrationCanvas();
+  if (!burst) return;
   if (rating <= 2) {
     let retry = rating === 1;
     let scalar = 1.8;
-    return launchConfetti({
+    return burst({
       particleCount: retry ? 60 : 15,
       spread: retry ? 135 : 66,
       startVelocity: retry ? 42 : 30,
@@ -31,7 +39,7 @@ function celebrateReview(rating) {
   }
   let colors = ["#c4b3ff", "#a9ebce", "#ffcf7d", "#ff9fbf", "#80ddff"];
   if (rating === 3) {
-    return launchConfetti({
+    return burst({
       particleCount: 24,
       spread: 58,
       startVelocity: 30,
@@ -44,7 +52,7 @@ function celebrateReview(rating) {
     [0.05, 65],
     [0.95, 115],
   ]) {
-    launchConfetti({
+    burst({
       particleCount: 135,
       angle,
       spread: 68,
@@ -54,7 +62,7 @@ function celebrateReview(rating) {
       colors,
     });
   }
-  return launchConfetti({
+  return burst({
     particleCount: 90,
     spread: 115,
     startVelocity: 38,
@@ -64,6 +72,69 @@ function celebrateReview(rating) {
     origin: { x: 0.5, y: 0.68 },
     shapes: ["star", "circle"],
     colors,
+  });
+}
+
+function celebrateCompletion($completion) {
+  $completion.removeAttribute("data-celebrate-completion");
+  window.requestAnimationFrame(() => {
+    if (!$completion.isConnected) return;
+    playNotes(
+      [392, 523, 659, 784, 1047, 1319, 1568, 2093],
+      "triangle",
+      0.105,
+      0.31,
+    );
+    let burst = celebrationCanvas();
+    if (!burst) return;
+    let compact = window.matchMedia("(max-width: 700px)").matches;
+    let colors = [
+      "#ffd166",
+      "#ff78a8",
+      "#9e81ff",
+      "#75e6ff",
+      "#a9ebce",
+      "#fff5c8",
+    ];
+    for (let [x, angle] of [
+      [0.04, 68],
+      [0.96, 112],
+      [0.5, 90],
+    ]) {
+      burst({
+        angle,
+        particleCount: compact ? 130 : 185,
+        spread: 103,
+        startVelocity: 56,
+        gravity: 0.8,
+        ticks: 170,
+        scalar: 1.12,
+        origin: { x, y: 0.83 },
+        shapes: ["square", "circle", "star"],
+        colors,
+      });
+    }
+    let until = performance.now() + 6200;
+    let rain = () => {
+      if (!$completion.isConnected || performance.now() >= until) return;
+      for (let lane = 0; lane < 3; lane++) {
+        burst({
+          angle: 270,
+          particleCount: compact ? 12 : 21,
+          spread: 115,
+          startVelocity: 21,
+          decay: 0.92,
+          gravity: 0.95,
+          ticks: 170,
+          scalar: 0.9 + Math.random() * 0.34,
+          origin: { x: (lane + Math.random()) / 3, y: 0 },
+          shapes: ["square", "circle", "star"],
+          colors,
+        });
+      }
+      window.setTimeout(rain, 165);
+    };
+    rain();
   });
 }
 
@@ -84,20 +155,24 @@ function playRatingSound(rating) {
     [523, 659, 784],
     [523, 659, 784, 1047],
   ][rating - 1];
-  if (notes && ratingAudio?.state === "running") {
+  if (notes) playNotes(notes, rating === 1 ? "sine" : "triangle");
+}
+
+function playNotes(notes, shape, spacing = 0.085, duration = 0.18) {
+  if (ratingAudio?.state === "running") {
     let start = ratingAudio.currentTime;
     for (let [index, frequency] of notes.entries()) {
-      let time = start + index * 0.085;
+      let time = start + index * spacing;
       let oscillator = ratingAudio.createOscillator();
       let gain = ratingAudio.createGain();
-      oscillator.type = rating === 1 ? "sine" : "triangle";
+      oscillator.type = shape;
       oscillator.frequency.value = frequency;
       gain.gain.setValueAtTime(0, time);
       gain.gain.linearRampToValueAtTime(0.095, time + 0.018);
-      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.17);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + duration - 0.01);
       oscillator.connect(gain).connect(ratingAudio.destination);
       oscillator.start(time);
-      oscillator.stop(time + 0.18);
+      oscillator.stop(time + duration);
     }
   }
 }
@@ -262,6 +337,7 @@ class Study {
         return;
       }
       event.preventDefault();
+      unlockRatingSound();
       this.loadNext(this.$nextLink.href, this.continueRecording);
     });
 
@@ -752,6 +828,8 @@ function mountWorkspace($scope, startRecording) {
   for (let $element of $scope.querySelectorAll(MediaStatus.SELECTOR)) {
     new MediaStatus($element).ready();
   }
+  let $completion = $scope.querySelector("[data-celebrate-completion]");
+  if ($completion) celebrateCompletion($completion);
   let $completionSync = $scope.querySelector("[data-completion-sync]");
   if ($syncShortcut && $completionSync) syncNow($syncShortcut, $completionSync);
 }

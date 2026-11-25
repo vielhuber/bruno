@@ -667,7 +667,8 @@ try {
         $deckId = $data['deck'];
         $_SESSION['dailyDeck'] = $deckId;
         if ($data['card'] === null) {
-            $data['syncAfterCompletion'] = $settings['sync'] && isset($_SESSION['dailyAnswered']);
+            $data['dailyCompleted'] = isset($_SESSION['dailyAnswered']);
+            $data['syncAfterCompletion'] = $settings['sync'] && $data['dailyCompleted'];
             unset($_SESSION['dailyAnswered']);
         }
     }

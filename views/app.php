@@ -74,11 +74,11 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <link rel="icon" type="image/svg+xml" href="/assets/icon.svg?v=4">
     <link rel="apple-touch-icon" href="/assets/icon-192.png?v=4">
     <link rel="manifest" href="/manifest.webmanifest?v=4">
-    <link rel="stylesheet" href="/assets/app.css?v=41">
+    <link rel="stylesheet" href="/assets/app.css?v=42">
     <?php if (in_array($view, ['home', 'study'], strict: true) && $account !== null): ?>
         <script defer src="/assets/canvas-confetti-1.9.4.js"></script>
     <?php endif; ?>
-    <script defer src="/assets/app.js?v=38"></script>
+    <script defer src="/assets/app.js?v=39"></script>
 </head>
 <body class="<?= $account === null ? 'guest' : 'signed-in' ?>">
 <?php if ($account === null): ?>
@@ -609,13 +609,15 @@ if ($view === 'create' && !isset($_POST['type'])) {
                     $studyUrl = $daily ? '/' : $route('study', $deckId);
                     ?>
                 <?php if ($daily && !$card): ?>
-                    <article class="panel daily-complete">
-                        <img src="/assets/bruno-pause.svg" width="400" height="264" alt="Bruno döst in seiner Hängematte">
-                        <h1>Alles geschafft.</h1>
-                        <p class="muted">0 Karten offen. Bruno macht Pause.</p>
-                        <?php if ($data['syncAfterCompletion']): ?>
-                            <p class="small muted" role="status" data-completion-sync></p>
-                        <?php endif; ?>
+                    <article class="daily-complete" <?= $data['dailyCompleted'] ? 'data-celebrate-completion' : '' ?>>
+                        <img src="/assets/bruno-pause.svg?v=2" width="400" height="264" alt="Bruno schläft in seiner Hängematte">
+                        <div>
+                            <h1>Alles geschafft.</h1>
+                            <p class="muted">0 Karten offen. Bruno macht Pause.</p>
+                            <?php if ($data['syncAfterCompletion']): ?>
+                                <p class="small muted" role="status" data-completion-sync></p>
+                            <?php endif; ?>
+                        </div>
                     </article>
                     <?php break; ?>
                 <?php endif; ?>
