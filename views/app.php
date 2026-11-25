@@ -77,7 +77,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <?php if (in_array($view, ['home', 'study'], strict: true) && $account !== null): ?>
         <script defer src="/assets/canvas-confetti-1.9.4.js"></script>
     <?php endif; ?>
-    <script defer src="/assets/app.js?v=37"></script>
+    <script defer src="/assets/app.js?v=38"></script>
 </head>
 <body class="<?= $account === null ? 'guest' : 'signed-in' ?>">
 <?php if ($account === null): ?>

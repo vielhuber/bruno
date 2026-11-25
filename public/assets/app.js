@@ -17,7 +17,7 @@ function celebrateReview(rating) {
   if (rating <= 2) {
     let retry = rating === 1;
     let scalar = 1.8;
-    launchConfetti({
+    return launchConfetti({
       particleCount: retry ? 60 : 15,
       spread: retry ? 135 : 66,
       startVelocity: retry ? 42 : 30,
@@ -28,11 +28,10 @@ function celebrateReview(rating) {
         window.confetti.shapeFromText({ text: retry ? "👻" : "💪", scalar }),
       ],
     });
-    return;
   }
   let colors = ["#c4b3ff", "#a9ebce", "#ffcf7d", "#ff9fbf", "#80ddff"];
   if (rating === 3) {
-    launchConfetti({
+    return launchConfetti({
       particleCount: 24,
       spread: 58,
       startVelocity: 30,
@@ -40,7 +39,6 @@ function celebrateReview(rating) {
       origin: { x: 0.5, y: 0.68 },
       colors,
     });
-    return;
   }
   for (let [x, angle] of [
     [0.05, 65],
@@ -56,7 +54,7 @@ function celebrateReview(rating) {
       colors,
     });
   }
-  launchConfetti({
+  return launchConfetti({
     particleCount: 90,
     spread: 115,
     startVelocity: 38,
@@ -79,7 +77,7 @@ function unlockRatingSound() {
   }
 }
 
-function playRating(rating) {
+function playRatingSound(rating) {
   let notes = [
     [330, 220, 165],
     [220, 277],
@@ -102,7 +100,21 @@ function playRating(rating) {
       oscillator.stop(time + 0.18);
     }
   }
-  celebrateReview(rating);
+}
+
+function playRating(rating) {
+  let confettiStarted = false;
+  try {
+    confettiStarted = Boolean(celebrateReview(rating));
+  } catch {
+    // Keep the tone if the canvas effect cannot start.
+  }
+  if (confettiStarted) {
+    // The renderer queues its draw before this sound callback.
+    window.requestAnimationFrame(() => playRatingSound(rating));
+    return;
+  }
+  playRatingSound(rating);
 }
 
 function setActionLabel($action, label, emoji) {
@@ -466,7 +478,7 @@ class Study {
       for (let $button of $buttons) $button.disabled = false;
       return;
     }
-    window.requestAnimationFrame(() => playRating(result.rating));
+    playRating(result.rating);
     await this.loadNext(this.$ratings.action);
   }
 
@@ -501,7 +513,7 @@ class Study {
       this.continueRecording = payload.has("voice") && result.remaining !== 0;
       this.reveal();
       this.$next.hidden = false;
-      window.requestAnimationFrame(() => playRating(result.rating));
+      playRating(result.rating);
     } catch (error) {
       this.$feedback.classList.add("error");
       this.$feedback.textContent =
