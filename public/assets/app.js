@@ -125,9 +125,10 @@ class Study {
 
   constructor($root) {
     this.$root = $root;
+    this.events = new AbortController();
   }
 
-  ready() {
+  ready(startRecording) {
     this.$solution = this.$root.querySelector("#solution");
     this.$actions = this.$root.querySelector("[data-answer-actions]");
     this.$reveal = this.$root.querySelector("[data-reveal]");
@@ -138,6 +139,13 @@ class Study {
     this.$mnemonic = this.$root.querySelector("[data-study-mnemonic]");
     this.hintUsed = this.$hint?.disabled ?? false;
     this.$recordStatus = this.$root.querySelector("[data-record-status]");
+    let signal = this.events.signal;
+    let stopMedia = () => {
+      window.speechSynthesis?.cancel();
+      this.cancelCapture?.();
+    };
+    window.addEventListener("pagehide", stopMedia, { signal });
+    signal.addEventListener("abort", stopMedia, { once: true });
     this.$reveal.addEventListener("click", () => {
       this.reveal();
       this.$ratings.hidden = false;
@@ -218,7 +226,6 @@ class Study {
           speech.speak(utterance);
         });
       }
-      window.addEventListener("pagehide", () => speech.cancel());
     }
     if (!this.$form) {
       this.$actions.hidden = false;
@@ -229,9 +236,22 @@ class Study {
     this.$record = this.$root.querySelector("[data-record]");
     this.$submit = this.$form.querySelector('button[type="submit"]');
     this.$next = this.$root.querySelector("[data-next-card]");
+    this.$nextLink = this.$next.querySelector("a");
     let recording;
-    let cancelCapture;
-    window.addEventListener("pagehide", () => cancelCapture?.());
+    this.$nextLink.addEventListener("click", (event) => {
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.shiftKey ||
+        event.altKey
+      ) {
+        return;
+      }
+      event.preventDefault();
+      this.loadNext(this.$nextLink.href, this.continueRecording);
+    });
 
     this.$form.addEventListener("submit", (event) => {
       event.preventDefault();
@@ -258,7 +278,7 @@ class Study {
       let stream;
       let context;
       let discarded = false;
-      cancelCapture = () => {
+      this.cancelCapture = () => {
         discarded = true;
         if (recording?.state === "recording") recording.stop();
         for (let track of stream?.getTracks() ?? []) track.stop();
@@ -270,8 +290,8 @@ class Study {
           audio: { channelCount: 1 },
         });
         if (discarded) {
-          cancelCapture();
-          cancelCapture = undefined;
+          this.cancelCapture();
+          this.cancelCapture = undefined;
           this.setBusy(false);
           return;
         }
@@ -358,7 +378,7 @@ class Study {
             this.setBusy(false);
           } finally {
             await context.close();
-            cancelCapture = undefined;
+            this.cancelCapture = undefined;
           }
           if (payload && !discarded) {
             this.grade(payload);
@@ -375,7 +395,7 @@ class Study {
           "Aufnahme läuft (maximal 20 Sekunden).";
         this.$record.disabled = false;
       } catch {
-        cancelCapture = undefined;
+        this.cancelCapture = undefined;
         for (let track of stream?.getTracks() ?? []) {
           track.stop();
         }
@@ -388,13 +408,9 @@ class Study {
       }
     });
     this.applyMode();
-    $answerMode.addEventListener("change", () => this.applyMode());
+    $answerMode.addEventListener("change", () => this.applyMode(), { signal });
     this.$actions.hidden = false;
-    if (
-      this.canRecord &&
-      !this.$record.hidden &&
-      nextAudioPage === window.location.href
-    ) {
+    if (startRecording && this.canRecord && !this.$record.hidden) {
       this.$record.click();
     }
   }
@@ -450,8 +466,8 @@ class Study {
       for (let $button of $buttons) $button.disabled = false;
       return;
     }
-    window.setTimeout(() => window.location.assign(this.$ratings.action), 740);
-    playRating(result.rating);
+    window.requestAnimationFrame(() => playRating(result.rating));
+    await this.loadNext(this.$ratings.action);
   }
 
   async grade(payload) {
@@ -474,33 +490,15 @@ class Study {
         ? `Erkannt: „${result.transcript}“. `
         : "";
       this.$feedback.textContent = `Bewertung gespeichert: ${result.ratingLabel}. ${transcript}${result.feedback}`;
-      let $nextCard = this.$next.querySelector("a");
       if (Number.isInteger(result.remaining)) {
         let $remaining = document.querySelector("[data-study-remaining]");
         $remaining.textContent = result.remaining;
         $remaining.parentElement.dataset.remaining = result.remaining;
         if (result.remaining === 0) {
-          setActionLabel($nextCard, "Fertig", "🏁");
+          setActionLabel(this.$nextLink, "Fertig", "🏁");
         }
       }
-      if (payload.has("voice") && result.remaining !== 0) {
-        $nextCard.addEventListener("click", (event) => {
-          if (
-            event.defaultPrevented ||
-            event.ctrlKey ||
-            event.metaKey ||
-            event.shiftKey ||
-            event.altKey
-          ) {
-            return;
-          }
-          try {
-            sessionStorage.setItem(Study.NEXT_AUDIO_KEY, $nextCard.href);
-          } catch {
-            // Browsers that block storage can still record manually after navigation.
-          }
-        });
-      }
+      this.continueRecording = payload.has("voice") && result.remaining !== 0;
       this.reveal();
       this.$next.hidden = false;
       window.requestAnimationFrame(() => playRating(result.rating));
@@ -513,6 +511,56 @@ class Study {
     } finally {
       this.setBusy(false);
     }
+  }
+
+  async loadNext(url, startRecording = false) {
+    if (this.loadingNext) return;
+    this.loadingNext = true;
+    let $workspace = this.$root.closest("main");
+    $workspace.setAttribute("aria-busy", "true");
+    let nextPage;
+    let $nextWorkspace;
+    try {
+      let response = await fetch(url, { cache: "no-store" });
+      if (!response.ok || response.redirected) throw new Error();
+      nextPage = new DOMParser().parseFromString(
+        await response.text(),
+        "text/html",
+      );
+      $nextWorkspace = nextPage.querySelector("main.workspace");
+      let nextCsrf = nextPage.querySelector(
+        '[data-sync-shortcut] [name="csrf"]',
+      )?.value;
+      let nextMode = nextPage.querySelector("[data-answer-mode]");
+      if (
+        !$nextWorkspace ||
+        nextCsrf !== $syncShortcut.elements.namedItem("csrf").value ||
+        nextMode?.dataset.answerMode !== $answerMode?.dataset.answerMode
+      ) {
+        throw new Error();
+      }
+    } catch {
+      if (startRecording) {
+        try {
+          sessionStorage.setItem(Study.NEXT_AUDIO_KEY, url);
+        } catch {
+          // A full navigation still works without recording continuity.
+        }
+      }
+      window.location.assign(url);
+      return;
+    }
+    this.events.abort();
+    $workspace.className = $nextWorkspace.className;
+    $workspace.replaceChildren(...$nextWorkspace.childNodes);
+    document.title = nextPage.title;
+    if (window.location.href !== url) {
+      window.history.replaceState(window.history.state, "", url);
+    }
+    mountWorkspace($workspace, startRecording);
+    $workspace.removeAttribute("aria-busy");
+    window.scrollTo(0, 0);
+    if (!$workspace.inert) $workspace.focus({ preventScroll: true });
   }
 
   reveal() {
@@ -546,12 +594,16 @@ class MediaStatus {
     let $image = this.$root.querySelector("[data-mnemonic-image]");
     let $retry = this.$root.querySelector("[data-media-retry]");
     let check = async () => {
+      if (!this.$root.isConnected) return;
       if (!document.hidden) {
         try {
           let response = await fetch(this.$root.dataset.mediaStatus, {
             cache: "no-store",
           });
-          if ([401, 403, 404].includes(response.status)) {
+          if (
+            !this.$root.isConnected ||
+            [401, 403, 404].includes(response.status)
+          ) {
             return;
           }
           if (response.ok) {
@@ -682,8 +734,15 @@ $syncShortcut?.addEventListener("submit", (event) => {
   event.preventDefault();
   syncNow($syncShortcut, $syncShortcut.querySelector('[role="status"]'));
 });
-let $completionSync = document.querySelector("[data-completion-sync]");
-if ($syncShortcut && $completionSync) syncNow($syncShortcut, $completionSync);
+function mountWorkspace($scope, startRecording) {
+  let $study = $scope.querySelector(Study.SELECTOR);
+  if ($study) new Study($study).ready(startRecording);
+  for (let $element of $scope.querySelectorAll(MediaStatus.SELECTOR)) {
+    new MediaStatus($element).ready();
+  }
+  let $completionSync = $scope.querySelector("[data-completion-sync]");
+  if ($syncShortcut && $completionSync) syncNow($syncShortcut, $completionSync);
+}
 
 let $menu = document.querySelector("[data-mobile-menu]");
 let $answerMode = document.querySelector("[data-answer-mode]");
@@ -740,10 +799,9 @@ try {
   nextAudioPage = null;
 }
 
-for (let Module of [Study, Editor, MediaStatus]) {
-  for (let $element of document.querySelectorAll(Module.SELECTOR)) {
-    new Module($element).ready();
-  }
+mountWorkspace(document, nextAudioPage === window.location.href);
+for (let $element of document.querySelectorAll(Editor.SELECTOR)) {
+  new Editor($element).ready();
 }
 
 let $ratedReview = document.querySelector("[data-review-rating]");
