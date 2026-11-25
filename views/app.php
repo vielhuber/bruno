@@ -31,6 +31,11 @@ $actionLabel = static function (string $text, string $emoji): string {
     $decoration = '<span class="action-emoji" aria-hidden="true">' . escape($emoji) . '</span>';
     return $decoration . '<span class="action-label">' . escape($text) . '</span>' . $decoration;
 };
+$speakButton = static function (string $label, string $language): void {
+    echo '<button type="button" class="button secondary icon-button" aria-label="' . escape($label)
+        . '" title="' . escape($label) . '" data-speak="' . escape($language) . '" hidden>'
+        . '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></button>';
+};
 $label = match ($view) {
     'login' => 'Anmelden',
     'decks' => 'Stapel verwalten',
@@ -68,11 +73,11 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <link rel="icon" type="image/svg+xml" href="/assets/icon.svg?v=4">
     <link rel="apple-touch-icon" href="/assets/icon-192.png?v=4">
     <link rel="manifest" href="/manifest.webmanifest?v=4">
-    <link rel="stylesheet" href="/assets/app.css?v=37">
+    <link rel="stylesheet" href="/assets/app.css?v=38">
     <?php if (in_array($view, ['home', 'study'], strict: true) && $account !== null): ?>
         <script defer src="/assets/canvas-confetti-1.9.4.js"></script>
     <?php endif; ?>
-    <script defer src="/assets/app.js?v=33"></script>
+    <script defer src="/assets/app.js?v=34"></script>
 </head>
 <body class="<?= $account === null ? 'guest' : 'signed-in' ?>">
 <?php if ($account === null): ?>
@@ -651,8 +656,14 @@ if ($view === 'create' && !isset($_POST['type'])) {
                                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6m-5 3h4M9 15v-1c0-.8-.5-1.3-1-1.8a6 6 0 1 1 8 0c-.5.5-1 1-1 1.8v1"/></svg>
                                 </button>
                             <?php endif; ?>
-                            <div class="flashcard-prompt">
-                                <p class="question preline"><?= escape($card['question']) ?></p>
+                            <div class="flashcard-prompt" data-speech-face>
+                                <div class="card-face">
+                                    <p class="question preline" data-speech-text><?= escape($card['question']) ?></p>
+                                    <?php if ($card['question'] !== ''): ?>
+                                        <?php $speakButton('Frage anhören', $data['questionLanguage']); ?>
+                                    <?php endif; ?>
+                                </div>
+                                <p class="small muted study-status" role="status" data-speech-status></p>
                                 <?php if ($card['questionMedia']): ?>
                                     <div class="card-media"><?php $cardMedia($card['questionMedia'], $deckId, $card['id']); ?></div>
                                 <?php endif; ?>
@@ -663,13 +674,11 @@ if ($view === 'create' && !isset($_POST['type'])) {
                             <?php if ($canGrade): ?>
                                 <div class="notice" data-feedback role="status" hidden></div>
                             <?php endif; ?>
-                            <section id="solution" class="solution" aria-label="Lösung" tabindex="-1" hidden>
-                                <div class="solution-answer">
+                            <section id="solution" class="solution" aria-label="Lösung" tabindex="-1" data-speech-face hidden>
+                                <div class="card-face">
                                     <p class="answer preline" data-speech-text><?= escape($card['answer']) ?></p>
                                     <?php if ($card['answer'] !== ''): ?>
-                                        <button type="button" class="button secondary icon-button" aria-label="Lösung anhören" title="Lösung anhören" data-speak="<?= escape($data['speechLanguage']) ?>" hidden>
-                                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
-                                        </button>
+                                        <?php $speakButton('Lösung anhören', $data['answerLanguage']); ?>
                                     <?php endif; ?>
                                 </div>
                                 <p class="small muted study-status" role="status" data-speech-status></p>

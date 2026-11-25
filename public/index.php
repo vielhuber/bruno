@@ -132,7 +132,8 @@ function study(AnkiBridge $anki, array $request, bool $daily = false): array
     $data['reversed'] = false;
     $data['hintUsed'] = false;
     $data['hintLetter'] = '';
-    $data['speechLanguage'] = 'de';
+    $data['questionLanguage'] = 'de';
+    $data['answerLanguage'] = 'de';
     if ($data['card'] === null) {
         return $data;
     }
@@ -147,20 +148,20 @@ function study(AnkiBridge $anki, array $request, bool $daily = false): array
         'reverseBlock' => random_int(0, REVIEW_CYCLE_BLOCKS - 1),
     ];
     $block = $_SESSION['reviewBlocks'][$deck];
-    $data['reversed'] = intdiv($block['answered'], REVIEW_BLOCK_SIZE) === $block['reverseBlock'];
+    $swap = intdiv($block['answered'], REVIEW_BLOCK_SIZE) === $block['reverseBlock'];
     $card = $data['card'];
-    if ($data['reversed']) {
+    $data['reversed'] = $swap !== $card['backFirst'];
+    if ($swap) {
         $data['card']['question'] = $card['answer'];
         $data['card']['answer'] = $card['question'];
         $data['card']['questionMedia'] = $card['answerMedia'];
         $data['card']['answerMedia'] = $card['questionMedia'];
     }
-    if (!$data['reversed']) {
-        $languages = ['englisch' => 'en', 'französisch' => 'fr', 'spanisch' => 'es', 'italienisch' => 'it', 'latein' => 'la'];
-        $pattern = '/\b(' . implode('|', array_keys($languages)) . ')(?:e[nmrs]?)?\b/u';
-        $context = mb_strtolower($data['name'] . ' ' . $data['focus']);
-        $data['speechLanguage'] = preg_match($pattern, $context, $language) === 1 ? $languages[$language[1]] : '';
-    }
+    $languages = ['englisch' => 'en', 'english' => 'en', 'französisch' => 'fr', 'spanisch' => 'es', 'italienisch' => 'it', 'latein' => 'la'];
+    $pattern = '/\b(' . implode('|', array_keys($languages)) . ')(?:e[nmrs]?)?\b/u';
+    $context = mb_strtolower($data['name'] . ' ' . $data['focus']);
+    $foreignLanguage = preg_match($pattern, $context, $language) === 1 ? $languages[$language[1]] : '';
+    $data[$data['reversed'] ? 'questionLanguage' : 'answerLanguage'] = $foreignLanguage;
     $data['hintUsed'] = ($_SESSION['studyHints'][$deck][$card['id']] ?? null) === [$card['reps'], $card['modified']];
     if (preg_match('/\p{L}\p{M}*/u', $data['card']['answer'], $letter) === 1) {
         $data['hintLetter'] = $letter[0];

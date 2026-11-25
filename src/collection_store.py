@@ -204,7 +204,7 @@ def card_face(value, tags):
 def card_content(card):
     display = card.render_output()
     note = card.note()
-    _, note_meta = unpack(note.fields[1]) if len(note.fields) == 2 else ('', {})
+    back, note_meta = unpack(note.fields[1]) if len(note.fields) == 2 else ('', {})
     question_markup = MNEMONIC_MARKUP.sub('', display.question_text) if note_meta else display.question_text
     answer_markup = MNEMONIC_MARKUP.sub('', display.answer_text) if note_meta else display.answer_text
     answer_markup = ANSWER_SEPARATOR.split(answer_markup, maxsplit=1)[-1]
@@ -221,6 +221,7 @@ def card_content(card):
         'answer': answer, 'answerMedia': [item for item in answer_media if item not in question_media],
         'hint': note_meta.get('hint', ''), 'image': note_meta.get('image', ''),
         'imageState': mnemonic_image_job(note_meta).get('state', ''),
+        'backFirst': len(note.fields) == 2 and question == clean(back) and question != clean(note.fields[0]),
     }
 
 

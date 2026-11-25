@@ -219,9 +219,9 @@ img, video, audio { max-width: 100%; }
 .daily-complete img { width: min(100%, 400px); height: auto; }
 .question, .solution .answer { font-size: clamp(1.65rem, 4.1vw, 3rem); font-weight: 780; letter-spacing: -.042em; line-height: 1.14; }
 .solution { border-top: 1px solid var(--line); }
-.solution-answer { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; gap: 6px; }
-.solution .answer { grid-column: 2; text-align: center; }
-.solution-answer .icon-button { grid-column: 3; justify-self: end; align-self: start; }
+.card-face { width: 100%; display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; gap: 6px; }
+.card-face > p { grid-column: 2; text-align: center; overflow-wrap: anywhere; }
+.card-face .icon-button { grid-column: 3; justify-self: end; align-self: start; }
 .card-media { display: grid; justify-items: start; gap: 10px; margin: 12px 0; }
 .card-media img, .card-media video { max-height: min(45vh, 420px); object-fit: contain; border-radius: 10px; }
 .mnemonic { margin-top: 15px; background: #382e28; padding: 12px; border-radius: 12px; display: flex; align-items: center; gap: 13px; color: #f1d4ad; }

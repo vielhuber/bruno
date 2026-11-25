@@ -129,36 +129,38 @@ class Study {
         this.setBusy(false);
       }
     });
-    let $speak = this.$root.querySelector("[data-speak]");
     let speech = window.speechSynthesis;
-    if ($speak && speech && typeof SpeechSynthesisUtterance === "function") {
-      let $speechText = this.$root.querySelector("[data-speech-text]");
-      let $speechStatus = this.$root.querySelector("[data-speech-status]");
-      $speak.hidden = false;
-      $speak.addEventListener("click", () => {
-        $speechStatus.textContent = "";
-        speech.cancel();
-        let utterance = new SpeechSynthesisUtterance($speechText.textContent);
-        let language = $speak.dataset.speak;
-        if (language) {
-          utterance.lang = language;
-          let localVoice = speech
-            .getVoices()
-            .find(
-              (voice) =>
-                voice.localService &&
-                voice.lang.toLowerCase().split("-")[0] === language,
-            );
-          if (localVoice) utterance.voice = localVoice;
-        }
-        utterance.addEventListener("error", ({ error }) => {
-          if (error !== "canceled" && error !== "interrupted") {
-            $speechStatus.textContent =
-              "Die Sprachausgabe ist in diesem Browser nicht verfügbar.";
+    if (speech && typeof SpeechSynthesisUtterance === "function") {
+      for (let $speak of this.$root.querySelectorAll("[data-speak]")) {
+        let $face = $speak.closest("[data-speech-face]");
+        let $speechText = $face.querySelector("[data-speech-text]");
+        let $speechStatus = $face.querySelector("[data-speech-status]");
+        $speak.hidden = false;
+        $speak.addEventListener("click", () => {
+          $speechStatus.textContent = "";
+          speech.cancel();
+          let utterance = new SpeechSynthesisUtterance($speechText.textContent);
+          let language = $speak.dataset.speak;
+          if (language) {
+            utterance.lang = language;
+            let localVoice = speech
+              .getVoices()
+              .find(
+                (voice) =>
+                  voice.localService &&
+                  voice.lang.toLowerCase().split("-")[0] === language,
+              );
+            if (localVoice) utterance.voice = localVoice;
           }
+          utterance.addEventListener("error", ({ error }) => {
+            if (error !== "canceled" && error !== "interrupted") {
+              $speechStatus.textContent =
+                "Die Sprachausgabe ist in diesem Browser nicht verfügbar.";
+            }
+          });
+          speech.speak(utterance);
         });
-        speech.speak(utterance);
-      });
+      }
       window.addEventListener("pagehide", () => speech.cancel());
     }
     if (!this.$form) {
