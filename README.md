@@ -47,18 +47,16 @@ Nur reguläre Stapel ohne Unterstapel können zugewiesen werden. Neue Stapel geh
 
 `php bin/bruno.php mark-vocabulary-decks` markiert alle vorhandenen regulären Anki-Stapel als Vokabeln, auch Unterstapel und nicht zugewiesene Stapel. Die Zuordnung, Sichtbarkeit und Lernstände bleiben unverändert.
 
-Beispiel für den Benutzer-Crontab (absolute Pfade anpassen):
+Ein einziger Aufruf von `bin/cron.php` pro Minute führt die fälligen Aufgaben aus: Medien jede Minute, Anki-Sync nach eingestelltem Intervall und das Tagesbackup um 03:17 Uhr (Berlin). In Produktion ruft der zentrale `_cron` von vielhuber.de dieses Script auf demselben Server auf. Alternativ trägt man es in den Benutzer-Crontab ein (absolute Pfade anpassen):
 
 ```cron
-*/30 * * * * cd /pfad/zu/bruno && /usr/bin/php bin/bruno.php sync --scheduled
-* * * * * cd /pfad/zu/bruno && /usr/bin/php bin/bruno.php media
-17 3 * * * cd /pfad/zu/bruno && /usr/bin/php bin/bruno.php backup
+* * * * * /usr/bin/php /pfad/zu/bruno/bin/cron.php
 ```
 
-Bei Hosting ohne Benutzer-Crontab können dieselben Aufträge per HTTPS auf `/maintenance.php?job=sync`, `job=media` und `job=backup` geplant werden. HTTP-Basic-Benutzer: `bruno-cron`. Ein zufälliges, separates Passwort verwenden und nur dessen SHA-256-Hash als `cron_password_hash` hinterlegen. Die URLs enthalten keine Zugangsdaten.
+Beim Umstieg nicht zusätzlich die bisherigen drei HTTPS-Aufrufe im KAS planen.
 
 Unter „Cronjob“ stehen die letzten geplanten Läufe, ihre Ergebnisse und die noch offenen Generierungsaufträge. Das Protokoll beginnt mit der Einführung der Ansicht und speichert keine Karteninhalte oder Zugangsdaten.
 
-Unter „Anki-Sync“ lassen sich Status und letzter erfolgreicher Abgleich sehen, ein manueller Lauf starten und das gemeinsame Intervall einstellen. Den Sync-Cronjob alle 30 Minuten aufrufen. Bei einem längeren Intervall überspringt bruno zu frühe Aufrufe, ohne Anki zu öffnen.
+Unter „Anki-Sync“ lassen sich Status und letzter erfolgreicher Abgleich sehen, ein manueller Lauf starten und das gemeinsame Intervall einstellen. Der zentrale Aufruf prüft zur vollen und halben Stunde, ob der Abgleich fällig ist.
 
 Die täglichen `.colpkg`-Backups enthalten die Sammlung samt Medien. Alle angemeldeten Konten können unter „Backups“ zusätzliche Sicherungen anlegen und einzelne Backups nach Bestätigung löschen. Die Zugangsdatenbank separat privat sichern. Medien liegen in Ankis `collection.media`, nicht in einer zusätzlichen Ablage von bruno. Stapel-Audio, -Video und Vorlagen sind in den Stapelmetadaten verlinkt; Ankis Funktion zum Löschen ungenutzter Medien kann sie als ungenutzt einstufen. Offline werden keine privaten Stapel zwischengespeichert. Frontend-Grundstruktur: [boilerplate](https://github.com/vielhuber/boilerplate/tree/061b7cd5270cfb0eca2d738abf7db7c4567efc60).
