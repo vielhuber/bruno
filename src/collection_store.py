@@ -20,7 +20,8 @@ from anki.stdmodels import get_stock_notetypes
 MARKER = re.compile(r'<!--bruno:([A-Za-z0-9_-]+)-->')
 MEDIA_NAME = re.compile(r'bruno-(\d+)-[0-9a-f]{32}\.(?:pdf|txt|png|jpg|webp|mp3|mp4|svg)')
 ANSWER_SEPARATOR = re.compile(r'<hr[^>]+\bid=["\']?answer\b[^>]*>', re.I)
-AV_MARKER = re.compile(r'\[(?:sound|anki:play):[^\]]*\]')
+TYPE_ANSWER = re.compile(r'\[\[type:([^\]\r\n]+)\]\]')
+AV_MARKER = re.compile(r'\[(?:sound:([^\]]*)|anki:play:[^\]]*)\]')
 MEDIA_TYPES = {
     'png': 'image/png', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'gif': 'image/gif',
     'webp': 'image/webp', 'avif': 'image/avif',
@@ -174,7 +175,9 @@ def media_type(file):
 
 def card_face(value, tags):
     parser = PlainText(value)
-    files = list(dict.fromkeys(parser.images + [tag.filename for tag in tags if hasattr(tag, 'filename')]))
+    files = dict.fromkeys(
+        parser.images + [tag.filename for tag in tags if hasattr(tag, 'filename')] + AV_MARKER.findall(value)
+    )
     media = []
     for file in files:
         if mime := media_type(file):
@@ -193,8 +196,12 @@ def card_content(card):
         answer = ANSWER_SEPARATOR.split(answer, maxsplit=1)[-1]
         if answer.startswith(display.question_text):
             answer = answer[len(display.question_text):]
-    question, question_media = card_face(display.question_text, display.question_av_tags)
-    answer, answer_media = card_face(answer, display.answer_av_tags)
+    typed = TYPE_ANSWER.search(answer)
+    question, question_media = card_face(TYPE_ANSWER.sub('', display.question_text), display.question_av_tags)
+    answer, answer_media = card_face(TYPE_ANSWER.sub('', answer), display.answer_av_tags)
+    if typed and not answer and typed[1] in note:
+        answer, typed_media = card_face(note[typed[1]], ())
+        answer_media.extend(item for item in typed_media if item not in answer_media)
     return {
         'question': question, 'questionMedia': question_media,
         'answer': answer, 'answerMedia': [item for item in answer_media if item not in question_media],
