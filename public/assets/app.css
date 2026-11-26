@@ -218,25 +218,25 @@ img, video, audio { max-width: 100%; }
         --word-arrival-time: 1.95s;
         --word-entrance: word-arrival var(--word-arrival-time) cubic-bezier(.34, .08, .26, 1) both;
         animation: var(--word-entrance);
-        transform-origin: 50% 75%;
+        transform-origin: center;
     }
-    .card-face > .question:not(:empty) { animation: var(--word-entrance), question-wobble 2.8s ease-in-out var(--word-arrival-time) infinite; }
+    .card-face > .question:not(:empty) { animation: var(--word-entrance), question-wobble 4.8s ease-in-out var(--word-arrival-time) infinite; }
 }
 @keyframes progress-pulse {
-    0%, 100% { transform: scale(.91); }
-    50% { background-position: 100% 50%; transform: scale(1.2); box-shadow: 0 0 0 5px #cbb0ff66, 0 0 24px #62e5dea0; }
+    0%, 100% { transform: scale(.955); }
+    50% { background-position: 100% 50%; transform: scale(1.1); box-shadow: 0 0 0 5px #cbb0ff66, 0 0 24px #62e5dea0; }
 }
 @keyframes word-arrival {
     0% { opacity: 0; color: var(--accent); transform: translate(-.32em, .75em) rotate(-9deg) scale(.56, .52); }
-    34% { opacity: 1; color: var(--accent-hover); transform: translateY(-.22em) scale(var(--card-arrival-zoom, 1.52), 1.64); }
+    34% { opacity: 1; color: var(--accent-hover); transform: translateY(-.22em) scale(var(--card-arrival-zoom-x, 1.4), var(--card-arrival-zoom-y, 2.26)); }
     62% { opacity: 1; color: inherit; transform: translate(-.04em, .08em) rotate(-2deg) scale(.91, .88); }
     82% { transform: translateY(-.055em) rotate(1deg) scale(1.09, 1.14); }
     100% { opacity: 1; color: inherit; transform: none; }
 }
 @keyframes question-wobble {
     0%, 100% { transform: none; }
-    27% { transform: translateY(-.06em) rotate(1.2deg) scale(1.12, 1.15); }
-    72% { transform: translateY(.035em) rotate(-1deg) scale(.9, .88); }
+    27% { transform: translateY(-.06em) scale(1.12, 1.15); }
+    72% { transform: translateY(.035em) scale(.9, .88); }
 }
 .workspace:has(> .daily-complete) { display: flex; flex-direction: column; max-width: none; padding: 0; }
 .daily-complete { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr); align-content: center; justify-items: center; gap: clamp(14px, 3dvh, 28px); padding: 16px 12px calc(16px + env(safe-area-inset-bottom)); overflow: hidden; text-align: center; background: radial-gradient(ellipse at 50% 45%, #342651, #171426 70%, #141321); }
@@ -244,9 +244,9 @@ img, video, audio { max-width: 100%; }
 .daily-complete p { margin-top: 6px; }
 .question, .solution .answer { font-size: clamp(1.65rem, 4.1vw, 3rem); font-weight: 780; letter-spacing: -.042em; line-height: 1.14; }
 .solution { border-top: 1px solid var(--line); }
-.card-face { width: 100%; display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; gap: 6px; }
+.card-face { width: 100%; display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; gap: 6px; isolation: isolate; }
 .card-face > p { grid-column: 2; justify-self: center; text-align: center; overflow-wrap: anywhere; }
-.card-face .icon-button { grid-column: 3; justify-self: end; align-self: start; }
+.card-face .icon-button { grid-column: 3; justify-self: end; align-self: start; z-index: 1; }
 .card-media { display: grid; justify-items: start; gap: 10px; margin: 12px 0; }
 .card-media img, .card-media video { max-height: min(45vh, 420px); object-fit: contain; border-radius: 10px; }
 .mnemonic { margin-top: 15px; background: #382e28; padding: 12px; border-radius: 12px; display: flex; align-items: center; gap: 13px; color: #f1d4ad; }
@@ -284,7 +284,6 @@ img, video, audio { max-width: 100%; }
     .app-shell { grid-template-columns: 272px minmax(0, 1fr); }
     .sidebar { padding-inline: 14px; }
     .workspace { padding-inline: 22px; }
-    .card-face > p { --card-arrival-zoom: 1.36; }
     .deck-grid { gap: 10px; }
 }
 
@@ -292,6 +291,10 @@ img, video, audio { max-width: 100%; }
     .workspace.study-workspace { padding-bottom: 56px; }
     .daily-header, .daily-header + .study { align-self: center; width: 100%; }
     .daily-header + .study { gap: 16px; }
+}
+
+@media (min-width: 1440px) {
+    .daily-header + .study .card-face > p { --card-arrival-zoom-x: 1.9; }
 }
 
 @media (max-width: 700px) {
@@ -321,6 +324,10 @@ img, video, audio { max-width: 100%; }
     .maintenance-stats { grid-template-columns: minmax(0, .75fr) minmax(0, 1.2fr) minmax(0, 1.05fr); }
     .backup-list :is(th, td) { padding-inline: 8px; }
     .button { padding-inline: 12px; }
+}
+
+@media (max-width: 360px) {
+    .card-face > p { --card-arrival-zoom-y: 2; }
 }
 
 @media (prefers-reduced-motion: no-preference) {
