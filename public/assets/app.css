@@ -213,15 +213,15 @@ img, video, audio { max-width: 100%; }
 .daily-counter strong { font-size: 1.2rem; font-variant-numeric: tabular-nums; }
 @media (prefers-reduced-motion: no-preference) {
     .daily-counter:not([data-remaining="0"]) { background-size: 250% 100%; animation: progress-pulse 2.6s ease-in-out infinite; }
-    .card-face > p:not(:empty) { animation: word-arrival 1.8s cubic-bezier(.36, .05, .28, .98) both; transform-origin: 50% 75%; }
+    .card-face > p:not(:empty) { animation: word-arrival 1.95s cubic-bezier(.34, .08, .26, 1) both; transform-origin: 50% 75%; }
 }
 @keyframes progress-pulse { 50% { background-position: 100% 50%; transform: scale(1.1); box-shadow: 0 0 0 5px #cbb0ff66, 0 0 22px #62e5dea0; } }
 @keyframes word-arrival {
-    0% { opacity: 0; transform: translateY(.55em) rotate(-7deg) scale(.82, .74); }
-    44% { opacity: 1; transform: translateY(-.12em) rotate(3.5deg) scale(1.06, 1.12); }
-    68% { opacity: 1; transform: translateY(.035em) rotate(-1.6deg) scale(.98, .94); }
-    86% { transform: translateY(-.025em) rotate(.55deg) scale(1.015, 1.02); }
-    100% { opacity: 1; transform: none; }
+    0% { opacity: 0; color: var(--accent); transform: translate(-.32em, .75em) rotate(-9deg) scale(.72, .63); }
+    39% { opacity: 1; color: var(--accent-hover); transform: translate(.08em, -.2em) rotate(4.5deg) scale(1.1, 1.18); }
+    63% { opacity: 1; color: inherit; transform: translate(-.04em, .055em) rotate(-2deg) scale(.96, .92); }
+    83% { transform: translateY(-.035em) rotate(.75deg) scale(1.025, 1.04); }
+    100% { opacity: 1; color: inherit; transform: none; }
 }
 .workspace:has(> .daily-complete) { display: flex; flex-direction: column; max-width: none; padding: 0; }
 .daily-complete { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr); align-content: center; justify-items: center; gap: clamp(14px, 3dvh, 28px); padding: 16px 12px calc(16px + env(safe-area-inset-bottom)); overflow: hidden; text-align: center; background: radial-gradient(ellipse at 50% 45%, #342651, #171426 70%, #141321); }
@@ -270,6 +270,12 @@ img, video, audio { max-width: 100%; }
     .sidebar { padding-inline: 14px; }
     .workspace { padding-inline: 22px; }
     .deck-grid { gap: 10px; }
+}
+
+@media (min-width: 701px) {
+    .workspace.study-workspace:has(> .daily-header) { padding-bottom: 34px; }
+    .daily-header, .daily-header + .study { align-self: center; width: 100%; }
+    .daily-header + .study { gap: 16px; }
 }
 
 @media (max-width: 700px) {
