@@ -44,12 +44,10 @@ $label = match ($view) {
     'preview' => 'Kartenvorschau',
     'review', 'study' => 'Wiederholen',
     'learn', 'lesson' => 'Lernen',
-    'backups' => 'Backups',
-    'sync' => 'Anki-Sync',
-    'cron' => 'Cronjob',
+    'maintenance' => 'Wartung',
     'users' => 'Benutzer',
     'profile' => 'Mein Profil',
-    default => 'Übersicht',
+    default => 'START',
 };
 $selectedType = input($_POST, key: 'type') ?: ($deckId === 0 ? 'vocabulary' : 'topic');
 if ($view === 'create' && !isset($_POST['type'])) {
@@ -74,7 +72,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <link rel="icon" type="image/svg+xml" href="/assets/icon.svg?v=4">
     <link rel="apple-touch-icon" href="/assets/icon-192.png?v=4">
     <link rel="manifest" href="/manifest.webmanifest?v=4">
-    <link rel="stylesheet" href="/assets/app.css?v=42">
+    <link rel="stylesheet" href="/assets/app.css?v=43">
     <?php if (in_array($view, ['home', 'study'], strict: true) && $account !== null): ?>
         <script defer src="/assets/canvas-confetti-1.9.4.js"></script>
     <?php endif; ?>
@@ -107,9 +105,19 @@ if ($view === 'create' && !isset($_POST['type'])) {
                 <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
             </button>
             <div class="sidebar-menu" id="sidebar-menu">
+                <?php if ($settings['ai']): ?>
+                    <label class="answer-mode" hidden>
+                        Antwortmodus
+                        <select data-answer-mode="<?= escape($account->id) ?>">
+                            <option value="reveal">Aufdecken</option>
+                            <option value="text">Eingeben</option>
+                            <option value="speak">Sprechen</option>
+                        </select>
+                    </label>
+                <?php endif; ?>
                 <nav aria-label="Hauptnavigation">
                     <a href="/" <?= $view === 'home' ? 'aria-current="page"' : '' ?>>
-                        <?= $actionLabel(text: 'Übersicht', emoji: '🏠') ?>
+                        <?= $actionLabel(text: 'START', emoji: '🏠') ?>
                     </a>
                     <a href="<?= $route('create') ?>" <?= in_array($view, ['create', 'preview'], strict: true) ? 'aria-current="page"' : '' ?>>
                         <?= $actionLabel(text: 'Erstellen', emoji: '✨') ?>
@@ -120,40 +128,24 @@ if ($view === 'create' && !isset($_POST['type'])) {
                     <a href="<?= $route('review') ?>" <?= in_array($view, ['review', 'study'], strict: true) ? 'aria-current="page"' : '' ?>>
                         <?= $actionLabel(text: 'Wiederholen', emoji: '🔁') ?>
                     </a>
-                    <form class="sidebar-sync" method="post" action="<?= $route('sync') ?>" data-sync-shortcut>
+                    <form class="sidebar-sync" method="post" action="<?= $route('maintenance') ?>#sync" data-sync-shortcut>
                         <?php $hidden(verb: 'sync-now'); ?>
                         <button type="submit" aria-label="Anki jetzt synchronisieren" title="Anki jetzt synchronisieren" <?= !$settings['sync'] || ($data['sync']['running'] ?? false) ? 'disabled' : '' ?>>
                             <?= $actionLabel(text: 'Synchronisieren', emoji: '🔄') ?>
                         </button>
                         <span class="small" role="status"></span>
                     </form>
-                    <?php if ($settings['ai']): ?>
-                        <label class="answer-mode" hidden>
-                            Antwortmodus
-                            <select data-answer-mode="<?= escape($account->id) ?>">
-                                <option value="reveal">Aufdecken</option>
-                                <option value="text">Eingeben</option>
-                                <option value="speak">Sprechen</option>
-                            </select>
-                        </label>
-                    <?php endif; ?>
+                    <a href="<?= $route('decks') ?>" <?= in_array($view, ['decks', 'deck'], strict: true) ? 'aria-current="page"' : '' ?>><?= $actionLabel(text: 'Stapel verwalten', emoji: '🗂️') ?></a>
+                    <a href="<?= $route('users') ?>" <?= $view === 'users' ? 'aria-current="page"' : '' ?>><?= $actionLabel(text: 'Benutzer', emoji: '👥') ?></a>
+                    <a href="<?= $route('maintenance') ?>" <?= $view === 'maintenance' ? 'aria-current="page"' : '' ?>><?= $actionLabel(text: 'Wartung', emoji: '⏱️') ?></a>
+                    <a class="profile-link" href="<?= $route('profile') ?>" <?= $view === 'profile' ? 'aria-current="page"' : '' ?>><?= $actionLabel(text: $account->email, emoji: '👤') ?></a>
+                    <button type="button" aria-expanded="false" aria-controls="install-help" data-install><?= $actionLabel(text: 'App installieren', emoji: '📲') ?></button>
+                    <form method="post" action="/">
+                        <?php $hidden(verb: 'logout'); ?>
+                        <button type="submit"><?= $actionLabel(text: 'Abmelden', emoji: '🚪') ?></button>
+                    </form>
                 </nav>
-                <div class="sidebar-foot">
-                    <nav class="sidebar-actions" aria-label="Weitere Funktionen">
-                        <a class="profile-link" href="<?= $route('profile') ?>" <?= $view === 'profile' ? 'aria-current="page"' : '' ?>><?= $actionLabel(text: $account->email, emoji: '👤') ?></a>
-                        <a href="<?= $route('decks') ?>" <?= in_array($view, ['decks', 'deck'], strict: true) ? 'aria-current="page"' : '' ?>><?= $actionLabel(text: 'Stapel verwalten', emoji: '🗂️') ?></a>
-                        <a href="<?= $route('users') ?>" <?= $view === 'users' ? 'aria-current="page"' : '' ?>><?= $actionLabel(text: 'Benutzer', emoji: '👥') ?></a>
-                        <a href="<?= $route('backups') ?>" <?= $view === 'backups' ? 'aria-current="page"' : '' ?>><?= $actionLabel(text: 'Backups', emoji: '💾') ?></a>
-                        <a href="<?= $route('sync') ?>" <?= $view === 'sync' ? 'aria-current="page"' : '' ?>><?= $actionLabel(text: 'Anki-Sync', emoji: '🔄') ?></a>
-                        <a href="<?= $route('cron') ?>" <?= $view === 'cron' ? 'aria-current="page"' : '' ?>><?= $actionLabel(text: 'Cronjob', emoji: '⏱️') ?></a>
-                        <button type="button" aria-expanded="false" aria-controls="install-help" data-install><?= $actionLabel(text: 'App installieren', emoji: '📲') ?></button>
-                        <form method="post" action="/">
-                            <?php $hidden(verb: 'logout'); ?>
-                            <button type="submit"><?= $actionLabel(text: 'Abmelden', emoji: '🚪') ?></button>
-                        </form>
-                    </nav>
-                    <p id="install-help" class="small muted" hidden>Browsermenü: „App installieren“. iOS: „Zum Home-Bildschirm“.</p>
-                </div>
+                <p id="install-help" class="small muted" hidden>Browsermenü: „App installieren“. iOS: „Zum Home-Bildschirm“.</p>
             </div>
         </aside>
         <div class="mobile-menu-backdrop" data-mobile-menu-backdrop aria-hidden="true"></div>
@@ -267,118 +259,8 @@ if ($view === 'create' && !isset($_POST['type'])) {
                     </div>
                 <?php endif; ?>
             <?php break;
-                case 'backups': ?>
-                <?php
-                $backups = $data['backups'];
-                    $latest = $backups[0]['createdAt'] ?? null;
-                    $formatSize = static fn (int $bytes): string => match (true) {
-                        $bytes >= 1_048_576 => number_format($bytes / 1_048_576, decimals: 2, decimal_separator: ',', thousands_separator: '.') . ' MiB',
-                        $bytes >= 1024 => number_format($bytes / 1024, decimals: 2, decimal_separator: ',', thousands_separator: '.') . ' KiB',
-                        default => $bytes . ' B',
-                    };
-                    ?>
-                <header class="screen-header">
-                    <div><h1>Backups</h1><p class="muted">Anki-Sammlung und Medien</p></div>
-                    <form method="post" action="<?= $route('backups') ?>">
-                        <?php $hidden(verb: 'backup'); ?>
-                        <button class="button primary" type="submit"><?= $actionLabel(text: 'Backup erstellen', emoji: '💾') ?></button>
-                    </form>
-                </header>
-                <dl class="stats backup-stats" aria-label="Backup-Status">
-                    <div class="stat-accent"><dt>Anzahl</dt><dd><?= count($backups) ?></dd></div>
-                    <div><dt>Letztes Backup</dt>
-                        <dd>
-                            <?php if ($latest !== null): ?>
-                                <time datetime="<?= $latest->format(DATE_ATOM) ?>"><?= $latest->format('d.m.Y') ?> <span class="small muted"><?= $latest->format('H:i:s') ?></span></time>
-                            <?php endif; ?>
-                            <?php if ($latest === null): ?>–<?php endif; ?>
-                        </dd>
-                    </div>
-                    <div><dt>Gesamtgröße</dt><dd><?= $formatSize(array_sum(array_column($backups, 'bytes'))) ?></dd></div>
-                </dl>
-                <?php if (!$backups): ?><p class="panel muted">Noch keine Backups.</p><?php endif; ?>
-                <?php if ($backups): ?>
-                    <section aria-labelledby="backup-history">
-                        <header class="section-header"><h2 id="backup-history">Verlauf</h2><span class="small muted">Zeitzone: Berlin</span></header>
-                        <div class="panel backup-list">
-                            <table aria-labelledby="backup-history">
-                                <thead><tr><th scope="col">Erstellt</th><th scope="col">Größe</th></tr></thead>
-                                <tbody>
-                                    <?php foreach ($backups as $backup): ?>
-                                        <?php $createdAt = $backup['createdAt']; ?>
-                                        <tr>
-                                            <td>
-                                                <time datetime="<?= $createdAt->format(DATE_ATOM) ?>"><span><?= $createdAt->format('d.m.Y') ?></span> <span class="muted"><?= $createdAt->format('H:i:s') ?></span></time>
-                                                <details class="backup-delete">
-                                                    <summary class="button secondary"><?= $actionLabel(text: 'Backup löschen', emoji: '🗑️') ?></summary>
-                                                    <form method="post" action="<?= $route('backups') ?>">
-                                                        <?php $hidden(verb: 'delete-backup', fields: ['backup' => $backup['id']]); ?>
-                                                        <button class="button secondary" type="submit"><?= $actionLabel(text: 'Endgültig löschen', emoji: '🗑️') ?></button>
-                                                    </form>
-                                                </details>
-                                            </td>
-                                            <td><?= $formatSize($backup['bytes']) ?></td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                    </section>
-                <?php endif; ?>
-            <?php break;
-                case 'sync': ?>
-                <?php
-                $syncStatus = $data['sync'];
-                    $syncLabel = match (true) {
-                        !$syncStatus['configured'] => 'Nicht eingerichtet',
-                        $syncStatus['running'] => 'Läuft',
-                        $syncStatus['result'] === 'success' => 'Erfolgreich',
-                        $syncStatus['result'] === 'failed' => 'Fehlgeschlagen',
-                        $syncStatus['result'] === 'started' => 'Unterbrochen',
-                        default => 'Noch kein Lauf erfasst',
-                    };
-                    $berlin = new \DateTimeZone('Europe/Berlin');
-                    ?>
-                <header class="screen-header">
-                    <div><h1>Anki-Sync</h1><p class="muted">bruno ↔ AnkiWeb · Karten, Lernstände und Medien</p></div>
-                    <div class="inline-actions">
-                        <a class="button secondary" href="<?= $route('sync') ?>"><?= $actionLabel(text: 'Aktualisieren', emoji: '🔄') ?></a>
-                        <form method="post" action="<?= $route('sync') ?>" data-sync>
-                            <?php $hidden(verb: 'sync-now'); ?>
-                            <button class="button primary" type="submit" <?= !$syncStatus['configured'] || $syncStatus['running'] ? 'disabled' : '' ?>><?= $actionLabel(text: 'Jetzt synchronisieren', emoji: '🔄') ?></button>
-                        </form>
-                    </div>
-                </header>
-                <dl class="stats" aria-label="Synchronisationsstatus">
-                    <div class="stat-accent"><dt>Status</dt><dd><?= $syncLabel ?></dd></div>
-                    <?php foreach (['lastSuccess' => 'Zuletzt erfolgreich', 'lastAttempt' => 'Letzter Versuch'] as $field => $title): ?>
-                        <div><dt><?= $title ?></dt><dd>
-                            <?php if ($syncStatus[$field] === null): ?>–<?php endif; ?>
-                            <?php if ($syncStatus[$field] !== null): ?>
-                                <?php $instant = (new \DateTimeImmutable('@' . $syncStatus[$field]))->setTimezone($berlin); ?>
-                                <time datetime="<?= $instant->format(DATE_ATOM) ?>"><?= $instant->format('d.m.Y') ?> <span class="small muted"><?= $instant->format('H:i:s') ?></span></time>
-                            <?php endif; ?>
-                        </dd></div>
-                    <?php endforeach; ?>
-                </dl>
-                <?php if (!$syncStatus['running'] && $syncStatus['error'] !== null && $syncStatus['error'] !== $errorMessage): ?>
-                    <p class="notice error" role="alert"><?= escape($syncStatus['error']) ?></p>
-                <?php endif; ?>
-                <form class="panel form-grid" method="post" action="<?= $route('sync') ?>">
-                    <?php $hidden(verb: 'sync-interval'); ?>
-                    <label>Automatischer Abgleich
-                        <select name="interval" <?= $syncStatus['running'] ? 'disabled' : '' ?>>
-                            <?php foreach (AnkiSync::INTERVALS as $minutes): ?>
-                                <option value="<?= $minutes ?>" <?= $syncStatus['interval'] === $minutes ? 'selected' : '' ?>>Alle <?= $minutes ?> Minuten</option>
-                            <?php endforeach; ?>
-                        </select>
-                    </label>
-                    <p class="small muted">Gilt für alle Konten. Änderungen in Anki Desktop zuerst dort mit AnkiWeb synchronisieren. Zeiten: Berlin.</p>
-                    <button class="button secondary" type="submit" <?= $syncStatus['running'] ? 'disabled' : '' ?>><?= $actionLabel(text: 'Intervall speichern', emoji: '⏱️') ?></button>
-                </form>
-            <?php break;
-                case 'cron':
-                    require __DIR__ . '/cron.php';
+                case 'maintenance':
+                    require __DIR__ . '/maintenance.php';
                     break;
                 case 'profile': ?>
                 <header class="screen-header"><h1>Mein Profil</h1></header>

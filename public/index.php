@@ -67,10 +67,10 @@ $data = [];
 /**
  * Only redirect to an internal route after a successful form submission.
  */
-function go(string $view = 'home', int $deck = 0): never
+function go(string $view = 'home', int $deck = 0, string $section = ''): never
 {
     $query = $view === 'home' ? '' : '?' . http_build_query(['view' => $view] + ($deck ? ['deck' => $deck] : []));
-    header('Location: /' . $query, response_code: 303);
+    header('Location: /' . $query . ($section === '' ? '' : '#' . rawurlencode($section)), response_code: 303);
     exit;
 }
 
@@ -171,12 +171,41 @@ function study(AnkiBridge $anki, array $request, bool $daily = false): array
     return $data;
 }
 
+/**
+ * Keep each maintenance section available when another cannot load.
+ *
+ * @return array<string, mixed>
+ */
+$loadMaintenance = static function () use ($anki, $backupHistory, $sync, $config): array {
+    $data = [];
+    foreach ([
+        'backups' => $backupHistory->entries(...),
+        'sync' => $sync->status(...),
+        'runs' => (new CronHistory($config['data_dir']))->recent(...),
+        'backlog' => static fn (): mixed => $anki->call('cron-backlog'),
+    ] as $section => $load) {
+        try {
+            $data[$section] = $load();
+        } catch (AppException) {
+            $data[$section] = null;
+        }
+    }
+
+    return $data;
+};
+
 try {
     $verb = input($_POST, key: 'verb');
     $isJson = ($_SERVER['HTTP_ACCEPT'] ?? '') === 'application/json';
     $ajaxSync = $verb === 'sync-now' && $isJson;
     $ajaxReview = $verb === 'answer' && $isJson;
     $view = input($_GET, key: 'view') ?: 'home';
+    if (in_array($view, ['backups', 'sync', 'cron'], strict: true)) {
+        if (in_array($_SERVER['REQUEST_METHOD'], ['GET', 'HEAD'], strict: true)) {
+            go('maintenance', section: $view);
+        }
+        $view = 'maintenance';
+    }
     if ($view !== 'media-status' && !$ajaxSync) {
         unset($_SESSION['flash']);
     }
@@ -306,13 +335,13 @@ try {
         if ($verb === 'backup') {
             $anki->call('backup', ['manual' => true]);
             $_SESSION['flash'] = 'Backup erstellt.';
-            go('backups');
+            go('maintenance', section: 'backups');
         }
 
         if ($verb === 'delete-backup') {
             $backupHistory->delete(input($_POST, key: 'backup', maximum: 64));
             $_SESSION['flash'] = 'Backup gelöscht.';
-            go('backups');
+            go('maintenance', section: 'backups');
         }
 
         if ($verb === 'sync-now') {
@@ -323,14 +352,14 @@ try {
             if ($ajaxSync) {
                 respond($result);
             }
-            go('sync');
+            go('maintenance', section: 'sync');
         }
 
         if ($verb === 'sync-interval') {
             $minutes = filter_var(input($_POST, key: 'interval'), FILTER_VALIDATE_INT);
             $sync->setInterval($minutes === false ? 0 : $minutes);
             $_SESSION['flash'] = 'Synchronisationsintervall gespeichert.';
-            go('sync');
+            go('maintenance', section: 'sync');
         }
 
         if ($verb === 'rename-deck') {
@@ -647,18 +676,9 @@ try {
         'deck' => $anki->call('deck-cards', $request),
         'lesson' => ['lesson' => $anki->call('lesson', $request)],
         'study' => study($anki, $request),
-        'backups' => ['backups' => $backupHistory->entries()],
-        'sync' => ['sync' => $sync->status()],
-        'cron' => ['runs' => (new CronHistory($config['data_dir']))->recent()],
+        'maintenance' => $loadMaintenance(),
         default => throw new AppException('Diese Seite gibt es nicht.', 404),
     };
-    if ($view === 'cron') {
-        try {
-            $data['backlog'] = $anki->call('cron-backlog');
-        } catch (AppException) {
-            $data['backlog'] = null;
-        }
-    }
     if ($view === 'home' || $view === 'study') {
         $data['reviewRating'] = $_SESSION['reviewRating'] ?? null;
         unset($_SESSION['reviewRating']);
@@ -692,12 +712,8 @@ try {
             $data['decks'] = [];
         }
     }
-    if ($account instanceof Account && $view === 'sync' && in_array($verb, ['sync-now', 'sync-interval'], strict: true)) {
-        try {
-            $data['sync'] = $sync->status();
-        } catch (AppException) {
-            $data = [];
-        }
+    if ($account instanceof Account && $view === 'maintenance' && in_array($verb, ['backup', 'delete-backup', 'sync-now', 'sync-interval'], strict: true)) {
+        $data = $loadMaintenance();
     }
     if ($view === 'users' && $account instanceof Account && $error instanceof AppException) {
         $data['users'] = $credentials->accounts();

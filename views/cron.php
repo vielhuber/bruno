@@ -27,13 +27,12 @@ $formatTime = static function (int $timestamp) use ($berlin): string {
         . '</span> <span class="muted">' . $instant->format('H:i:s') . '</span></time>';
 };
 ?>
-<header class="screen-header">
-    <div><h1>Cronjob</h1><p class="muted">Geplante Aufgaben und Generierungsfortschritt</p></div>
-    <a class="button secondary" href="<?= $route('cron') ?>"><?= $actionLabel(text: 'Aktualisieren', emoji: '🔄') ?></a>
+<header class="section-header">
+    <div><h2 id="maintenance-cron">Cronjob</h2><p class="muted">Geplante Aufgaben und Generierungsfortschritt</p></div>
 </header>
 <div class="deck-grid">
     <section aria-labelledby="cron-backlog">
-        <header class="section-header"><h2 id="cron-backlog">Noch zu generieren</h2></header>
+        <header class="section-header"><h3 id="cron-backlog">Noch zu generieren</h3></header>
         <?php if ($data['backlog'] === null): ?>
             <p class="panel muted">Der Generierungsstand ist gerade nicht verfügbar.</p>
         <?php endif; ?>
@@ -68,7 +67,7 @@ $formatTime = static function (int $timestamp) use ($berlin): string {
         <?php endif; ?>
     </section>
     <section aria-labelledby="cron-history">
-        <header class="section-header"><h2 id="cron-history">Letzte Läufe</h2><span class="small muted">Zeitzone: Berlin</span></header>
+        <header class="section-header"><h3 id="cron-history">Letzte Läufe</h3><span class="small muted">Zeitzone: Berlin</span></header>
         <?php if ($data['runs'] === null): ?>
             <p class="panel muted">Der Cronverlauf ist gerade nicht verfügbar.</p>
         <?php endif; ?>
