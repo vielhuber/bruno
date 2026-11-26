@@ -8,5 +8,6 @@ return [
     'ai_key' => '',
     'ai_model' => 'gpt-6.2-sol',
     'fal_key' => '',
+    'cron_token_hash' => '',
     'cron_password_hash' => '',
 ];

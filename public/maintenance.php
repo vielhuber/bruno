@@ -12,8 +12,9 @@ header('X-Content-Type-Options: nosniff');
 
 $job = input($_GET, key: 'job');
 $scheduled = !isset($_GET['job']);
+$credentialHash = $scheduled ? $config['cron_token_hash'] : $config['cron_password_hash'];
 if (
-    $config['cron_password_hash'] === ''
+    $credentialHash === ''
     || !filter_var($_SERVER['HTTPS'] ?? '', FILTER_VALIDATE_BOOL)
     || (!$scheduled && !in_array($job, CronHistory::JOBS, strict: true))
 ) {
@@ -21,9 +22,17 @@ if (
     exit;
 }
 
+if ($scheduled && !hash_equals($credentialHash, hash('sha256', input($_GET, key: 'token')))) {
+    http_response_code(403);
+    exit;
+}
+
 if (
-    ($_SERVER['PHP_AUTH_USER'] ?? '') !== 'bruno-cron'
-    || !hash_equals($config['cron_password_hash'], hash('sha256', $_SERVER['PHP_AUTH_PW'] ?? ''))
+    !$scheduled
+    && (
+        ($_SERVER['PHP_AUTH_USER'] ?? '') !== 'bruno-cron'
+        || !hash_equals($credentialHash, hash('sha256', $_SERVER['PHP_AUTH_PW'] ?? ''))
+    )
 ) {
     header('WWW-Authenticate: Basic realm="bruno maintenance"', response_code: 401);
     exit;

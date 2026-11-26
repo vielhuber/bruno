@@ -47,7 +47,7 @@ Nur reguläre Stapel ohne Unterstapel können zugewiesen werden. Neue Stapel geh
 
 `php bin/bruno.php mark-vocabulary-decks` markiert alle vorhandenen regulären Anki-Stapel als Vokabeln, auch Unterstapel und nicht zugewiesene Stapel. Die Zuordnung, Sichtbarkeit und Lernstände bleiben unverändert.
 
-Ein einziger Aufruf pro Minute führt die fälligen Aufgaben aus: Medien jede Minute, Anki-Sync nach eingestelltem Intervall und das Tagesbackup um 03:17 Uhr (Berlin). In Produktion ruft der zentrale `_cron` von vielhuber.de `https://bruno.vielhuber.de/maintenance.php` per HTTP Basic Auth auf. Das Passwort für den Benutzer `bruno-cron` liegt als `BRUNO_CRON_PASSWORD` in der privaten Cron-Umgebung; in bruno steht nur der SHA-256-Hash unter `cron_password_hash`. Alternativ trägt man das CLI-Script in den Benutzer-Crontab ein (absolute Pfade anpassen):
+Ein einziger Aufruf pro Minute führt die fälligen Aufgaben aus: Medien jede Minute, Anki-Sync nach eingestelltem Intervall und das Tagesbackup um 03:17 Uhr (Berlin). In Produktion ruft der zentrale `_cron` von vielhuber.de `https://bruno.vielhuber.de/maintenance.php` mit dem GET-Parameter `token` auf. Das Token liegt als `BRUNO_CRON_TOKEN` in der privaten Cron-Umgebung; in bruno steht nur der SHA-256-Hash unter `cron_token_hash`. Alternativ trägt man das CLI-Script in den Benutzer-Crontab ein (absolute Pfade anpassen):
 
 ```cron
 * * * * * /usr/bin/php /pfad/zu/bruno/bin/cron.php
