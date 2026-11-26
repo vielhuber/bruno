@@ -273,7 +273,7 @@ img, video, audio { max-width: 100%; }
 }
 
 @media (min-width: 701px) {
-    .workspace.study-workspace:has(> .daily-header) { padding-bottom: 34px; }
+    .workspace.study-workspace { padding-bottom: 56px; }
     .daily-header, .daily-header + .study { align-self: center; width: 100%; }
     .daily-header + .study { gap: 16px; }
 }
