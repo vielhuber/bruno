@@ -283,7 +283,9 @@ class Study {
         $speak.addEventListener("click", () => {
           $speechStatus.textContent = "";
           speech.cancel();
-          let utterance = new SpeechSynthesisUtterance($speechText.textContent);
+          let utterance = new SpeechSynthesisUtterance(
+            $speechText.dataset.speechText,
+          );
           utterance.lang =
             $speak.dataset.speak || document.documentElement.lang;
           let language = utterance.lang.toLowerCase().split("-")[0];

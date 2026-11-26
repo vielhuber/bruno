@@ -22,6 +22,7 @@ $cardMedia = static function (array $media, int $deck, int $card) use ($mediaUrl
         };
     }
 };
+$cardText = static fn (string $text): string => escape(str_replace(search: ', ', replace: "\n", subject: $text));
 $hidden = static function (string $verb, array $fields = []) use ($csrf): void {
     foreach (['verb' => $verb, 'csrf' => $csrf] + $fields as $name => $value) {
         echo '<input type="hidden" name="' . escape($name) . '" value="' . escape((string) $value) . '">';
@@ -76,7 +77,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <?php if (in_array($view, ['home', 'study'], strict: true) && $account !== null): ?>
         <script defer src="/assets/canvas-confetti-1.9.4.js"></script>
     <?php endif; ?>
-    <script defer src="/assets/app.js?v=39"></script>
+    <script defer src="/assets/app.js?v=40"></script>
 </head>
 <body class="<?= $account === null ? 'guest' : 'signed-in' ?>">
 <?php if ($account === null): ?>
@@ -235,7 +236,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                                 <?php foreach (['question' => 'Vorderseite', 'answer' => 'Rückseite'] as $face => $faceLabel): ?>
                                     <section>
                                         <h3 class="eyebrow"><?= $faceLabel ?></h3>
-                                        <p class="preline"><?= escape($card[$face]) ?></p>
+                                        <p class="preline"><?= $cardText($card[$face]) ?></p>
                                         <?php if ($card[$face . 'Media']): ?>
                                             <div class="card-media"><?php $cardMedia($card[$face . 'Media'], $deckId, $card['id']); ?></div>
                                         <?php endif; ?>
@@ -390,8 +391,8 @@ if ($view === 'create' && !isset($_POST['type'])) {
                         <?php foreach ($proposal['cards'] as $index => $card): ?>
                             <article class="panel form-grid">
                                 <h2>Karte <?= $index + 1 ?></h2>
-                                <div><h3>Vorderseite</h3><p class="preline"><?= escape($card['front']) ?></p></div>
-                                <div><h3>Rückseite</h3><p class="preline"><?= escape($card['back']) ?></p></div>
+                                <div><h3>Vorderseite</h3><p class="preline"><?= $cardText($card['front']) ?></p></div>
+                                <div><h3>Rückseite</h3><p class="preline"><?= $cardText($card['back']) ?></p></div>
                             </article>
                         <?php endforeach; ?>
                     </div>
@@ -547,7 +548,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                             <?php endif; ?>
                             <div class="flashcard-prompt" data-speech-face>
                                 <div class="card-face">
-                                    <p class="question preline" data-speech-text><?= escape($card['question']) ?></p>
+                                    <p class="question preline" data-speech-text="<?= escape($card['question']) ?>"><?= $cardText($card['question']) ?></p>
                                     <?php if ($card['question'] !== ''): ?>
                                         <?php $speakButton('Frage anhören', $data['questionLanguage']); ?>
                                     <?php endif; ?>
@@ -563,7 +564,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                             <div class="notice" data-feedback role="status" hidden></div>
                             <section id="solution" class="solution" aria-label="Lösung" tabindex="-1" data-speech-face hidden>
                                 <div class="card-face">
-                                    <p class="answer preline" data-speech-text><?= escape($card['answer']) ?></p>
+                                    <p class="answer preline" data-speech-text="<?= escape($card['answer']) ?>"><?= $cardText($card['answer']) ?></p>
                                     <?php if ($card['answer'] !== ''): ?>
                                         <?php $speakButton('Lösung anhören', $data['answerLanguage']); ?>
                                     <?php endif; ?>
