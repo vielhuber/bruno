@@ -73,7 +73,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <link rel="icon" type="image/svg+xml" href="/assets/icon.svg?v=4">
     <link rel="apple-touch-icon" href="/assets/icon-192.png?v=4">
     <link rel="manifest" href="/manifest.webmanifest?v=4">
-    <link rel="stylesheet" href="/assets/app.css?v=44">
+    <link rel="stylesheet" href="/assets/app.css?v=45">
     <?php if (in_array($view, ['home', 'study'], strict: true) && $account !== null): ?>
         <script defer src="/assets/canvas-confetti-1.9.4.js"></script>
     <?php endif; ?>
@@ -101,7 +101,10 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <a class="skip" href="#main">Zum Inhalt</a>
     <div class="app-shell">
         <aside class="sidebar">
-            <a class="brand" href="/"><img class="brand-icon" src="/assets/icon.svg?v=4" width="41" height="41" alt=""> bruno</a>
+            <div class="sidebar-brand">
+                <a class="brand" href="/"><img class="brand-icon" src="/assets/icon.svg?v=4" width="41" height="41" alt=""> bruno</a>
+                <p class="sidebar-account"><?= escape($account->email) ?></p>
+            </div>
             <button type="button" class="button mobile-menu" aria-label="Menü" aria-controls="sidebar-menu" aria-expanded="false" data-mobile-menu>
                 <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
             </button>
@@ -137,9 +140,8 @@ if ($view === 'create' && !isset($_POST['type'])) {
                         <span class="small" role="status"></span>
                     </form>
                     <a href="<?= $route('decks') ?>" <?= in_array($view, ['decks', 'deck'], strict: true) ? 'aria-current="page"' : '' ?>><?= $actionLabel(text: 'Stapel verwalten', emoji: '🗂️') ?></a>
-                    <a href="<?= $route('users') ?>" <?= $view === 'users' ? 'aria-current="page"' : '' ?>><?= $actionLabel(text: 'Benutzer', emoji: '👥') ?></a>
+                    <a href="<?= $route('users') ?>" <?= in_array($view, ['users', 'profile'], strict: true) ? 'aria-current="page"' : '' ?>><?= $actionLabel(text: 'Benutzer', emoji: '👥') ?></a>
                     <a href="<?= $route('maintenance') ?>" <?= $view === 'maintenance' ? 'aria-current="page"' : '' ?>><?= $actionLabel(text: 'Wartung', emoji: '⏱️') ?></a>
-                    <a class="profile-link" href="<?= $route('profile') ?>" <?= $view === 'profile' ? 'aria-current="page"' : '' ?>><?= $actionLabel(text: $account->email, emoji: '👤') ?></a>
                     <button type="button" aria-expanded="false" aria-controls="install-help" data-install><?= $actionLabel(text: 'App installieren', emoji: '📲') ?></button>
                     <form method="post" action="/">
                         <?php $hidden(verb: 'logout'); ?>

@@ -98,12 +98,13 @@ h3 { font-size: 1.12rem; letter-spacing: -.02em; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 img, video, audio { max-width: 100%; }
 
-.app-shell { min-height: 100dvh; display: grid; grid-template-columns: 256px minmax(0, 1fr); }
+.app-shell { min-height: 100dvh; display: grid; grid-template-columns: 304px minmax(0, 1fr); }
 .sidebar { position: sticky; top: 0; height: 100dvh; overflow: auto; background: var(--sidebar); border-right: 1px solid var(--line); padding: 25px 17px 17px; display: flex; flex-direction: column; gap: 18px; }
 .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); font-size: 1.7rem; font-weight: 820; letter-spacing: -.07em; white-space: nowrap; }
 .brand:hover { color: var(--text); }
 .brand-icon { width: 41px; height: 41px; flex-shrink: 0; border-radius: 12px; background: #6746ed; }
-.sidebar .brand { align-self: flex-start; margin-inline: 5px; }
+.sidebar-brand { display: grid; justify-items: start; gap: 4px; min-width: 0; margin-inline: 5px; }
+.sidebar-account { color: var(--subtle); font-size: .75rem; line-height: 1.25; text-transform: uppercase; }
 .eyebrow { font-size: .72rem; font-weight: 760; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
 .sidebar nav { display: grid; grid-auto-rows: 1fr; gap: 5px; }
 .sidebar nav form { display: grid; min-width: 0; }
@@ -140,7 +141,6 @@ img, video, audio { max-width: 100%; }
 .button.icon-button { width: 44px; padding: 0; }
 .action-label { min-width: 0; text-transform: uppercase; }
 .action-emoji { flex: none; font-family: "Bruno Emoji", "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; font-weight: 400; }
-.profile-link .action-label { word-break: break-all; }
 
 .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0 0 29px; }
 .stats > div { min-width: 0; border: 1px solid var(--line); background: var(--surface); padding: 13px 16px; border-radius: var(--radius); }
@@ -266,7 +266,7 @@ img, video, audio { max-width: 100%; }
 .login-panel .notice { margin: 15px 0 0; }
 
 @media (max-width: 960px) {
-    .app-shell { grid-template-columns: 244px minmax(0, 1fr); }
+    .app-shell { grid-template-columns: 272px minmax(0, 1fr); }
     .sidebar { padding-inline: 14px; }
     .workspace { padding-inline: 22px; }
     .deck-grid { gap: 10px; }
@@ -281,8 +281,9 @@ img, video, audio { max-width: 100%; }
 @media (max-width: 700px) {
     html:has(.mobile-menu[aria-expanded="true"]) { overflow: hidden; }
     .app-shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
-    .sidebar { position: relative; z-index: 4; overflow: visible; height: auto; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 6px 10px; padding: max(1px, env(safe-area-inset-top)) 12px 0; border-right: 0; border-bottom: 1px solid var(--line); }
-    .sidebar .brand { margin: 0; align-self: center; min-height: 40px; }
+    .sidebar { position: relative; z-index: 4; overflow: visible; height: auto; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px 10px; padding: max(1px, env(safe-area-inset-top)) 12px 3px; border-right: 0; border-bottom: 1px solid var(--line); }
+    .sidebar-brand { margin-inline: 0; gap: 1px; }
+    .sidebar .brand { min-height: 28px; }
     .brand { font-size: 1.18rem; }
     .brand-icon { width: 26px; height: 26px; border-radius: 7px; }
     .button.mobile-menu { display: inline-flex; justify-self: end; width: 40px; min-height: 40px; padding: 0; background: transparent; }

@@ -27,7 +27,7 @@ Fehlt auf dem Shared Host `ensurepip`, die beiden Python-Schritte durch `python3
 
 Beim Erstellen sind 1 bis 250 Karten wählbar (Standard: 10). Die KI liest bis zu zehn Vorlagen mit insgesamt höchstens 8 MB. Schülerunterlagen vor dem Upload anonymisieren. Gibt man die Kartenvorschau frei, speichert bruno den Stapel direkt in Anki. Pro Stapel lässt sich ein Lernvideo erzeugen oder ersetzen. Die geschätzte Gebühr steht am Button. Vorhandenes Audio bleibt abspielbar; neue Audiodateien werden nicht beauftragt.
 
-Ein separates Login-Cookie hält die Anmeldung 30 Tage lang ab dem Login, auch nach einem Deployment. Alle angemeldeten Konten können unter „Benutzer“ Konten verwalten und Passwörter zurücksetzen. Das eigene Profil ist über die E-Mail-Adresse im Menü erreichbar. Beim Löschen bleiben Anki-Stapel erhalten. Das letzte Konto lässt sich nicht löschen.
+Ein separates Login-Cookie hält die Anmeldung 30 Tage lang ab dem Login, auch nach einem Deployment. Alle angemeldeten Konten können unter „Benutzer“ Konten verwalten und Passwörter zurücksetzen. Das eigene Profil ist dort beim eigenen Konto erreichbar. Beim Löschen bleiben Anki-Stapel erhalten. Das letzte Konto lässt sich nicht löschen.
 
 Nach dem Speichern ergänzt der Media-Cron fehlende Merksätze und Merkbilder automatisch in allen als Vokabeln gekennzeichneten Stapeln. Vorhandene Merksätze und Bilder bleiben erhalten. Der Media-Cron verarbeitet bis zu zehn Merksätze und startet höchstens ein Merkbild pro Lauf. Bei einfachen Vorder-/Rückseitenkarten erscheinen beide auch auf der Anki-Rückseite. Bei Kartenvorlagen, die das Antwortfeld in der Frage verwenden, bleiben sie in bruno sichtbar.
 
