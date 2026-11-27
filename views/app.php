@@ -77,7 +77,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <?php if (in_array($view, ['home', 'study'], strict: true) && $account !== null): ?>
         <script defer src="/assets/canvas-confetti-1.9.4.js"></script>
     <?php endif; ?>
-    <script defer src="/assets/app.js?v=40"></script>
+    <script defer src="/assets/app.js?v=41"></script>
 </head>
 <body class="<?= $account === null ? 'guest' : 'signed-in' ?>">
 <?php if ($account === null): ?>
@@ -550,7 +550,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                     ?>
                     <div class="study" data-study>
                         <article class="panel flashcard">
-                            <?php if ($data['hintLetter'] !== ''): ?>
+                            <?php if ($data['hintText'] !== ''): ?>
                                 <button type="button" class="button secondary icon-button" aria-label="Tipp anzeigen" title="Tipp anzeigen" aria-controls="study-hint<?= $hasMnemonic ? ' study-mnemonic' : '' ?>" data-study-hint <?= $data['hintUsed'] ? 'disabled' : '' ?>>
                                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6m-5 3h4M9 15v-1c0-.8-.5-1.3-1-1.8a6 6 0 1 1 8 0c-.5.5-1 1-1 1.8v1"/></svg>
                                 </button>
@@ -566,8 +566,8 @@ if ($view === 'create' && !isset($_POST['type'])) {
                                 <?php if ($card['questionMedia']): ?>
                                     <div class="card-media"><?php $cardMedia($card['questionMedia'], $deckId, $card['id']); ?></div>
                                 <?php endif; ?>
-                                <?php if ($data['hintLetter'] !== ''): ?>
-                                    <p id="study-hint" class="small muted study-status" role="status"><?= $data['hintUsed'] ? escape($data['hintLetter']) . '...' : '' ?></p>
+                                <?php if ($data['hintText'] !== ''): ?>
+                                    <p id="study-hint" class="small muted study-status preline" role="status"><?= $data['hintUsed'] ? escape($data['hintText']) : '' ?></p>
                                 <?php endif; ?>
                             </div>
                             <div class="notice" data-feedback role="status" hidden></div>

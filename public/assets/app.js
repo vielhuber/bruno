@@ -263,7 +263,7 @@ class Study {
         this.hintUsed = true;
         this.$ratings.querySelector('[name="rating"][value="4"]').disabled =
           true;
-        $status.textContent = `${result.letter}...`;
+        $status.textContent = result.hint;
         if (this.$mnemonic) this.$mnemonic.hidden = false;
       } catch {
         $status.textContent =

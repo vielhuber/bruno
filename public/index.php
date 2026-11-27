@@ -132,7 +132,7 @@ function study(AnkiBridge $anki, array $request, bool $daily = false): array
     $data = $anki->call($daily ? 'daily-study' : 'study', $request);
     $data['reversed'] = false;
     $data['hintUsed'] = false;
-    $data['hintLetter'] = '';
+    $data['hintText'] = '';
     $data['questionLanguage'] = 'de';
     $data['answerLanguage'] = 'de';
     if ($data['card'] === null) {
@@ -166,8 +166,11 @@ function study(AnkiBridge $anki, array $request, bool $daily = false): array
     $foreignLanguage = preg_match($pattern, $context, $language) === 1 ? $languages[$language[1]] : '';
     $data[$data['reversed'] ? 'questionLanguage' : 'answerLanguage'] = $foreignLanguage;
     $data['hintUsed'] = ($_SESSION['studyHints'][$deck][$card['id']] ?? null) === [$card['reps'], $card['modified']];
-    if (preg_match('/\p{L}\p{M}*/u', $data['card']['answer'], $letter) === 1) {
-        $data['hintLetter'] = $letter[0];
+    if (preg_match('/\p{L}/u', $data['card']['answer']) === 1) {
+        $data['hintText'] = preg_replace_callback('/[\p{L}\p{N}][\p{L}\p{M}\p{N}]*/u', static function (array $word): string {
+            preg_match_all('/\X/u', $word[0], $graphemes);
+            return $graphemes[0][0] . str_repeat('.', count($graphemes[0]) - 1);
+        }, $data['card']['answer']) ?? '';
     }
 
     return $data;
@@ -564,11 +567,12 @@ try {
                     throw new AppException('Diese Karte ist nicht mehr aktuell. Bitte die Lernrunde neu öffnen.', 409);
                 }
                 if ($verb === 'study-hint') {
-                    if ($presentation['hintLetter'] === '') {
+                    if ($presentation['hintText'] === '') {
                         throw new AppException('Für diese Karte ist kein Tipp verfügbar.', 422);
                     }
                     $_SESSION['studyHints'][$deckId][$values['card']] = $cardVersion;
-                    respond(['letter' => $presentation['hintLetter']]);
+                    preg_match('/\p{L}\p{M}*/u', $presentation['hintText'], $letter);
+                    respond(['hint' => $presentation['hintText'], 'letter' => $letter[0]]);
                 }
                 if ($card['question'] === '' || $card['answer'] === '') {
                     throw new AppException('Bei dieser Karte kannst du deine Antwort nur selbst bewerten.', 422);
