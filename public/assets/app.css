@@ -115,10 +115,11 @@ img, video, audio { max-width: 100%; }
 .answer-mode { display: grid; gap: 4px; padding-top: 6px; color: var(--subtle); font-size: .83rem; font-weight: 650; }
 .answer-mode select { width: 100%; min-height: 50px; padding-inline: 10px; background: var(--raised); border: 1px solid var(--control); border-radius: 9px; }
 .icon-button svg { width: 19px; height: 19px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linejoin: round; stroke-linecap: round; }
-.sidebar-sync > span:not(:empty) { margin-block-start: 4px; }
-.sidebar-sync[data-state="success"], [data-completion-sync][data-state="success"] { color: var(--positive); }
-.sidebar-sync[data-state="error"], [data-completion-sync][data-state="error"] { color: #ffb9c5; }
+.sidebar-sync > [role="status"] { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+[data-completion-sync][data-state="success"] { color: var(--positive); }
+[data-completion-sync][data-state="error"] { color: #ffb9c5; }
 .sidebar-sync[data-state="success"] button { background: var(--positive-surface); color: var(--positive); }
+.sidebar-sync[data-state="error"] button { background: #432831; color: #ffb9c5; }
 .skip { position: fixed; top: 6px; left: 6px; z-index: 5; transform: translateY(-150%); padding: 10px 16px; background: var(--surface); }
 .skip:focus { transform: none; }
 .sidebar-menu { display: grid; gap: 10px; min-width: 0; }

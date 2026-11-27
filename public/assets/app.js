@@ -764,7 +764,8 @@ async function syncNow($form, $feedback) {
   if ($submit.disabled) return;
   $submit.disabled = true;
   $form.dataset.state = "pending";
-  $feedback.textContent = "Synchronisierung läuft …";
+  $submit.title = "Synchronisierung läuft …";
+  $feedback.textContent = $submit.title;
   let state = "error";
   let message = "Synchronisierung fehlgeschlagen.";
   try {
@@ -786,6 +787,8 @@ async function syncNow($form, $feedback) {
   $form.dataset.state = state;
   $feedback.dataset.state = state;
   $feedback.textContent = message;
+  $submit.title =
+    state === "error" ? message : $submit.getAttribute("aria-label");
   $submit.disabled = false;
 }
 

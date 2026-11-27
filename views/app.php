@@ -73,9 +73,9 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <link rel="icon" type="image/svg+xml" href="/assets/icon.svg?v=4">
     <link rel="apple-touch-icon" href="/assets/icon-192.png?v=4">
     <link rel="manifest" href="/manifest.webmanifest?v=4">
-    <link rel="stylesheet" href="/assets/app.css?v=52">
+    <link rel="stylesheet" href="/assets/app.css?v=53">
     <script defer src="/assets/canvas-confetti-1.9.4.js"></script>
-    <script defer src="/assets/app.js?v=45" data-app-script></script>
+    <script defer src="/assets/app.js?v=46" data-app-script></script>
 </head>
 <body class="<?= $account === null ? 'guest' : 'signed-in' ?>">
 <div id="app">
@@ -136,7 +136,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                         <button type="submit" aria-label="Anki jetzt synchronisieren" title="Anki jetzt synchronisieren" <?= !$settings['sync'] || ($data['sync']['running'] ?? false) ? 'disabled' : '' ?>>
                             <?= $actionLabel(text: 'Synchronisieren', emoji: '🔄') ?>
                         </button>
-                        <span class="small" role="status"></span>
+                        <span role="status"></span>
                     </form>
                     <a href="<?= $route('decks') ?>" <?= in_array($view, ['decks', 'deck'], strict: true) ? 'aria-current="page"' : '' ?>><?= $actionLabel(text: 'Stapel verwalten', emoji: '🗂️') ?></a>
                     <a href="<?= $route('users') ?>" <?= in_array($view, ['users', 'profile'], strict: true) ? 'aria-current="page"' : '' ?>><?= $actionLabel(text: 'Benutzer', emoji: '👥') ?></a>
