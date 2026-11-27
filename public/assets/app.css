@@ -211,6 +211,7 @@ img, video, audio { max-width: 100%; }
 .daily-header h1 { font-size: clamp(1.45rem, 4vw, 2.35rem); }
 .daily-counter { flex: none; padding: 5px 10px; border-radius: 10px; background: linear-gradient(115deg, #ff8faf, #ffc982, #fff099, #9ce9bb, #96d8ff, #cbb0ff); color: var(--paper); box-shadow: 0 0 14px #cbb0ff80; font-size: .85rem; font-weight: 760; white-space: nowrap; }
 .daily-counter strong { font-size: 1.2rem; font-variant-numeric: tabular-nums; }
+.deck-transition { position: fixed; inset: 0; z-index: 6; display: grid; place-items: center; padding: 24px; background: radial-gradient(ellipse at center, var(--accent-surface), var(--paper) 78%); color: var(--accent-hover); font-size: clamp(2rem, 8vw, 5rem); font-weight: 820; line-height: 1.1; text-align: center; }
 @media (prefers-reduced-motion: no-preference) {
     .workspace.study-workspace { overflow-x: clip; }
     .daily-counter:not([data-remaining="0"]) { margin-inline-start: 14px; transform-origin: right center; background-size: 250% 100%; animation: progress-pulse .9s ease-in-out infinite; }

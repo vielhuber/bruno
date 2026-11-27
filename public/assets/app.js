@@ -880,6 +880,8 @@ class Navigation {
   static SELECTOR = "#app";
   static SCRIPT = "[data-app-script]";
   static ERROR = "[data-navigation-error]";
+  static DAILY_DECK = "[data-daily-deck]";
+  static DECK_TRANSITION_MS = 1250;
 
   constructor($root) {
     this.$root = $root;
@@ -1007,6 +1009,35 @@ class Navigation {
       ) {
         window.location.assign(nextUrl);
         return;
+      }
+      let currentDeck = this.$root.querySelector(Navigation.DAILY_DECK)?.dataset
+        .dailyDeck;
+      let $nextDeck = $next.querySelector(Navigation.DAILY_DECK);
+      if (
+        currentDeck &&
+        $nextDeck &&
+        currentDeck !== $nextDeck.dataset.dailyDeck
+      ) {
+        let $splash = document.createElement("div");
+        $splash.className = "deck-transition";
+        $splash.setAttribute("role", "status");
+        $splash.textContent = $nextDeck.querySelector("h1").textContent;
+        document.body.append($splash);
+        this.$root.inert = true;
+        await new Promise((resolve) => {
+          let timer = window.setTimeout(resolve, Navigation.DECK_TRANSITION_MS);
+          controller.signal.addEventListener(
+            "abort",
+            () => {
+              window.clearTimeout(timer);
+              resolve();
+            },
+            { once: true },
+          );
+        });
+        $splash.remove();
+        this.$root.inert = false;
+        if (controller.signal.aborted) return;
       }
       this.pageEvents.abort();
       this.$root.replaceChildren(...$next.childNodes);

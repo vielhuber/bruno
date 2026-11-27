@@ -73,9 +73,9 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <link rel="icon" type="image/svg+xml" href="/assets/icon.svg?v=4">
     <link rel="apple-touch-icon" href="/assets/icon-192.png?v=4">
     <link rel="manifest" href="/manifest.webmanifest?v=4">
-    <link rel="stylesheet" href="/assets/app.css?v=49">
+    <link rel="stylesheet" href="/assets/app.css?v=50">
     <script defer src="/assets/canvas-confetti-1.9.4.js"></script>
-    <script defer src="/assets/app.js?v=42" data-app-script></script>
+    <script defer src="/assets/app.js?v=43" data-app-script></script>
 </head>
 <body class="<?= $account === null ? 'guest' : 'signed-in' ?>">
 <div id="app">
@@ -515,7 +515,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                 <?php if (!$daily): ?>
                     <a class="back-link" href="<?= $route('review') ?>"><?= $actionLabel(text: 'Wiederholen', emoji: '⬅️') ?></a>
                 <?php endif; ?>
-                <header class="screen-header<?= $daily ? ' daily-header' : '' ?>">
+                <header class="screen-header<?= $daily ? ' daily-header' : '' ?>" <?= $daily ? 'data-daily-deck="' . $deckId . '"' : '' ?>>
                     <div>
                         <?php if (!$daily): ?><p class="eyebrow">Wiederholen</p><?php endif; ?>
                         <h1><?= escape($data['name']) ?></h1>
