@@ -129,7 +129,15 @@ def dispatch(directory, request):
             }
         if action == 'rename-deck':
             ensure_deck_name_available(col, request['title'], deck['id'])
-            col.decks.rename(deck['id'], request['title'])
+            if deck['name'] != request['title']:
+                col.decks.rename(deck['id'], request['title'])
+                deck = col.decks.get(deck['id'], default=False)
+            if 'allowReversedReviews' in request:
+                meta = metadata(deck)
+                if meta.get('allowReversedReviews') is not request['allowReversedReviews']:
+                    meta['allowReversedReviews'] = request['allowReversedReviews']
+                    deck['bruno'] = meta
+                    col.decks.update(deck, preserve_usn=False)
             return None
         if action == 'delete-deck':
             if deck['id'] == DEFAULT_DECK_ID:

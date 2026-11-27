@@ -131,6 +131,7 @@ def deck_list(col, owner):
             'total': node.total_in_deck,
             'due': node.learn_count + node.review_count + node.new_count,
             'vocabulary': meta.get('vocabulary', False),
+            'allowReversedReviews': meta.get('allowReversedReviews') is True,
             'deletable': deck['id'] != DEFAULT_DECK_ID,
         })
     return sorted(decks, key=lambda deck: deck['name'].casefold())
@@ -231,6 +232,7 @@ def study(col, deck):
     result = {
         'deck': deck['id'], 'name': deck['name'], 'card': None,
         'vocabulary': meta.get('vocabulary') is True, 'focus': meta.get('focus', ''),
+        'allowReversedReviews': meta.get('allowReversedReviews') is True,
     }
     with selected_deck(col, deck['id']):
         queue = col.sched.get_queued_cards()
@@ -341,7 +343,7 @@ def generate(col, owner, request):
         ensure_deck_name_available(col, title)
     if deck and (deck['name'] != title or lesson(col, deck)['text'] != request['previousLesson']):
         raise Rejected('Der Stapel wurde seit der Vorschau geändert. Bitte einen neuen Entwurf erstellen.', 409)
-    meta = metadata(deck) if deck else {'owner': owner}
+    meta = metadata(deck) if deck else {'owner': owner, 'allowReversedReviews': False}
     if meta.get('vocabulary', request['vocabulary']) != request['vocabulary']:
         raise Rejected('Der Kartentyp muss zum bestehenden Stapel passen.', 422)
 

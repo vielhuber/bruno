@@ -122,7 +122,7 @@ $endBrowserLogin = static function () use ($setLoginCookie): never {
 };
 
 /**
- * Reverse the presentation for one randomly placed block without changing the scheduled card.
+ * Reverse one block per cycle only for opted-in decks, without changing the scheduled card.
  *
  * @param array{owner: string, deck: int} $request
  * @return array<string, mixed>
@@ -139,24 +139,26 @@ function study(AnkiBridge $anki, array $request, bool $daily = false): array
         return $data;
     }
     $deck = $data['deck'];
-    if (!$data['vocabulary']) {
+    if (!$data['allowReversedReviews']) {
         unset($_SESSION['reviewBlocks'][$deck]);
-        return $data;
     }
-
-    $_SESSION['reviewBlocks'][$deck] ??= [
-        'answered' => 0,
-        'reverseBlock' => random_int(0, REVIEW_CYCLE_BLOCKS - 1),
-    ];
-    $block = $_SESSION['reviewBlocks'][$deck];
-    $swap = intdiv($block['answered'], REVIEW_BLOCK_SIZE) === $block['reverseBlock'];
+    if ($data['allowReversedReviews']) {
+        $_SESSION['reviewBlocks'][$deck] ??= [
+            'answered' => 0,
+            'reverseBlock' => random_int(0, REVIEW_CYCLE_BLOCKS - 1),
+        ];
+        $block = $_SESSION['reviewBlocks'][$deck];
+        $data['reversed'] = intdiv($block['answered'], REVIEW_BLOCK_SIZE) === $block['reverseBlock'];
+    }
     $card = $data['card'];
-    $data['reversed'] = $swap !== $card['backFirst'];
-    if ($swap) {
+    if ($data['reversed'] !== $card['backFirst']) {
         $data['card']['question'] = $card['answer'];
         $data['card']['answer'] = $card['question'];
         $data['card']['questionMedia'] = $card['answerMedia'];
         $data['card']['answerMedia'] = $card['questionMedia'];
+    }
+    if (!$data['vocabulary']) {
+        return $data;
     }
     $languages = ['englisch' => 'en', 'english' => 'en', 'französisch' => 'fr', 'spanisch' => 'es', 'italienisch' => 'it', 'latein' => 'la'];
     $pattern = '/\b(' . implode('|', array_keys($languages)) . ')(?:e[nmrs]?)?\b/u';
@@ -363,8 +365,12 @@ try {
         }
 
         if ($verb === 'rename-deck') {
-            $anki->call('rename-deck', $request + ['title' => $readDeckTitle($_POST)]);
-            $_SESSION['flash'] = 'Stapel umbenannt.';
+            $deckSettings = ['title' => $readDeckTitle($_POST)];
+            if (isset($_POST['allow_reversed_reviews'])) {
+                $deckSettings['allowReversedReviews'] = input($_POST, key: 'allow_reversed_reviews') === '1';
+            }
+            $anki->call('rename-deck', $request + $deckSettings);
+            $_SESSION['flash'] = 'Stapel gespeichert.';
             go('decks');
         }
 

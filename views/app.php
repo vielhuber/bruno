@@ -193,7 +193,14 @@ if ($view === 'create' && !isset($_POST['type'])) {
                                             <form class="form-grid page-actions" method="post" action="<?= $route('decks') ?>">
                                                 <?php $hidden(verb: 'rename-deck', fields: ['deck' => $deck['id']]); ?>
                                                 <label>Stapelname <input name="title" value="<?= escape($editing ? input($_POST, key: 'title') : $deck['name']) ?>" maxlength="100" required></label>
-                                                <button class="button secondary" type="submit"><?= $actionLabel(text: 'Namen speichern', emoji: '💾') ?></button>
+                                                <?php $allowReversed = $editing ? input($_POST, key: 'allow_reversed_reviews') === '1' : $deck['allowReversedReviews']; ?>
+                                                <label>Karten umgedreht abfragen erlauben
+                                                    <select name="allow_reversed_reviews">
+                                                        <option value="0" <?= !$allowReversed ? 'selected' : '' ?>>Nein</option>
+                                                        <option value="1" <?= $allowReversed ? 'selected' : '' ?>>Ja</option>
+                                                    </select>
+                                                </label>
+                                                <button class="button secondary" type="submit"><?= $actionLabel(text: 'Stapel speichern', emoji: '💾') ?></button>
                                                 <p><a class="button secondary" href="<?= $route('create', $deck['id']) ?>"><?= $actionLabel(text: 'Karten hinzufügen', emoji: '➕') ?></a></p>
                                             </form>
                                         </details>
@@ -513,7 +520,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                     <div>
                         <?php if (!$daily): ?><p class="eyebrow">Wiederholen</p><?php endif; ?>
                         <h1><?= escape($data['name']) ?></h1>
-                        <?php if ($card && $data['vocabulary']): ?>
+                        <?php if ($card && ($data['vocabulary'] || $data['reversed'])): ?>
                             <p class="small muted"><?= $data['reversed'] ? '(Rückseite)' : 'Vorderseite zuerst' ?></p>
                         <?php endif; ?>
                     </div>
