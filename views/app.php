@@ -73,7 +73,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <link rel="icon" type="image/svg+xml" href="/assets/icon.svg?v=4">
     <link rel="apple-touch-icon" href="/assets/icon-192.png?v=4">
     <link rel="manifest" href="/manifest.webmanifest?v=4">
-    <link rel="stylesheet" href="/assets/app.css?v=51">
+    <link rel="stylesheet" href="/assets/app.css?v=52">
     <script defer src="/assets/canvas-confetti-1.9.4.js"></script>
     <script defer src="/assets/app.js?v=45" data-app-script></script>
 </head>

@@ -111,6 +111,7 @@ img, video, audio { max-width: 100%; }
 .sidebar nav :where(a, button) { color: var(--subtle); background: transparent; text-decoration: none; text-align: start; display: flex; align-items: center; gap: 7px; width: 100%; min-height: 50px; padding: 6px 11px; border: 1px solid transparent; border-radius: 10px; font-size: .94rem; line-height: 1.18; font-weight: 650; }
 .sidebar nav :where(a, button):hover { color: var(--text); background: var(--raised); }
 .sidebar nav a[aria-current] { background: var(--accent-surface); border-color: #463764; color: var(--accent); }
+.sidebar nav .action-emoji { width: 1.4em; text-align: center; }
 .answer-mode { display: grid; gap: 4px; padding-top: 6px; color: var(--subtle); font-size: .83rem; font-weight: 650; }
 .answer-mode select { width: 100%; min-height: 50px; padding-inline: 10px; background: var(--raised); border: 1px solid var(--control); border-radius: 9px; }
 .icon-button svg { width: 19px; height: 19px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linejoin: round; stroke-linecap: round; }
