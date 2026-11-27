@@ -22,7 +22,7 @@ $cardMedia = static function (array $media, int $deck, int $card) use ($mediaUrl
         };
     }
 };
-$cardText = static fn (string $text): string => escape(str_replace(search: ', ', replace: "\n", subject: $text));
+$cardText = static fn (string $text): string => escape(str_replace(search: [', ', '; '], replace: "\n", subject: $text));
 $hidden = static function (string $verb, array $fields = []) use ($csrf): void {
     foreach (['verb' => $verb, 'csrf' => $csrf] + $fields as $name => $value) {
         echo '<input type="hidden" name="' . escape($name) . '" value="' . escape((string) $value) . '">';
