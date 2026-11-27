@@ -75,7 +75,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <link rel="manifest" href="/manifest.webmanifest?v=4">
     <link rel="stylesheet" href="/assets/app.css?v=50">
     <script defer src="/assets/canvas-confetti-1.9.4.js"></script>
-    <script defer src="/assets/app.js?v=44" data-app-script></script>
+    <script defer src="/assets/app.js?v=45" data-app-script></script>
 </head>
 <body class="<?= $account === null ? 'guest' : 'signed-in' ?>">
 <div id="app">

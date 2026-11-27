@@ -16,19 +16,30 @@ function celebrationCanvas() {
   return launchConfetti;
 }
 
+function confettiViewport() {
+  let span = Math.min(window.innerWidth, window.innerHeight * 1.6);
+  let scale = Math.min(4, Math.max(0.85, span / 400));
+  return {
+    scale,
+    reach: Math.sqrt(scale),
+    density: Math.min(1, Math.max(0, (scale - 1) / 2)),
+  };
+}
+
 function celebrateReview(rating) {
   if (rating <= 2 && !window.OffscreenCanvas?.prototype.transferToImageBitmap) {
     return;
   }
   let burst = celebrationCanvas();
   if (!burst) return;
+  let { scale, reach } = confettiViewport();
   if (rating <= 2) {
     let retry = rating === 1;
-    let scalar = 1.8;
+    let scalar = 1.8 * scale;
     return burst({
       particleCount: retry ? 60 : 15,
       spread: retry ? 135 : 66,
-      startVelocity: retry ? 42 : 30,
+      startVelocity: (retry ? 42 : 30) * reach,
       ticks: retry ? 145 : 100,
       origin: { x: 0.5, y: 0.68 },
       scalar,
@@ -42,8 +53,9 @@ function celebrateReview(rating) {
     return burst({
       particleCount: 24,
       spread: 58,
-      startVelocity: 30,
+      startVelocity: 30 * reach,
       ticks: 90,
+      scalar: scale,
       origin: { x: 0.5, y: 0.68 },
       colors,
     });
@@ -56,8 +68,9 @@ function celebrateReview(rating) {
       particleCount: 135,
       angle,
       spread: 68,
-      startVelocity: 57,
+      startVelocity: 57 * reach,
       ticks: 160,
+      scalar: scale,
       origin: { x, y: 0.7 },
       colors,
     });
@@ -65,10 +78,10 @@ function celebrateReview(rating) {
   return burst({
     particleCount: 90,
     spread: 115,
-    startVelocity: 38,
+    startVelocity: 38 * reach,
     gravity: 0.86,
     ticks: 180,
-    scalar: 1.13,
+    scalar: 1.13 * scale,
     origin: { x: 0.5, y: 0.68 },
     shapes: ["star", "circle"],
     colors,
@@ -87,7 +100,7 @@ function celebrateCompletion($completion) {
     );
     let burst = celebrationCanvas();
     if (!burst) return;
-    let compact = window.matchMedia("(max-width: 700px)").matches;
+    let { scale, reach, density } = confettiViewport();
     let colors = [
       "#ffd166",
       "#ff78a8",
@@ -103,12 +116,12 @@ function celebrateCompletion($completion) {
     ]) {
       burst({
         angle,
-        particleCount: compact ? 130 : 185,
+        particleCount: Math.round(130 + density * 55),
         spread: 103,
-        startVelocity: 56,
+        startVelocity: 56 * reach,
         gravity: 0.8,
         ticks: 170,
-        scalar: 1.12,
+        scalar: 1.12 * scale,
         origin: { x, y: 0.83 },
         shapes: ["square", "circle", "star"],
         colors,
@@ -117,16 +130,18 @@ function celebrateCompletion($completion) {
     let until = performance.now() + 6200;
     let rain = () => {
       if (!$completion.isConnected || performance.now() >= until) return;
+      let { scale, reach, density } = confettiViewport();
+      let gravity = 0.95 * Math.max(1, window.innerHeight / 600);
       for (let lane = 0; lane < 3; lane++) {
         burst({
           angle: 270,
-          particleCount: compact ? 12 : 21,
+          particleCount: Math.round(12 + density * 9),
           spread: 115,
-          startVelocity: 21,
+          startVelocity: 21 * reach,
           decay: 0.92,
-          gravity: 0.95,
+          gravity,
           ticks: 170,
-          scalar: 0.9 + Math.random() * 0.34,
+          scalar: (0.9 + Math.random() * 0.34) * scale,
           origin: { x: (lane + Math.random()) / 3, y: 0 },
           shapes: ["square", "circle", "star"],
           colors,
