@@ -74,12 +74,11 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <link rel="apple-touch-icon" href="/assets/icon-192.png?v=4">
     <link rel="manifest" href="/manifest.webmanifest?v=4">
     <link rel="stylesheet" href="/assets/app.css?v=49">
-    <?php if (in_array($view, ['home', 'study'], strict: true) && $account !== null): ?>
-        <script defer src="/assets/canvas-confetti-1.9.4.js"></script>
-    <?php endif; ?>
-    <script defer src="/assets/app.js?v=41"></script>
+    <script defer src="/assets/canvas-confetti-1.9.4.js"></script>
+    <script defer src="/assets/app.js?v=42" data-app-script></script>
 </head>
 <body class="<?= $account === null ? 'guest' : 'signed-in' ?>">
+<div id="app">
 <?php if ($account === null): ?>
     <main class="guest-main" id="main">
         <article class="panel login-panel">
@@ -642,5 +641,6 @@ if ($view === 'create' && !isset($_POST['type'])) {
         </main>
     </div>
 <?php endif; ?>
+</div>
 </body>
 </html>

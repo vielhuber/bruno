@@ -201,7 +201,6 @@ function setActionLabel($action, label, emoji) {
 
 class Study {
   static SELECTOR = "[data-study]";
-  static NEXT_AUDIO_KEY = "bruno-next-audio";
   static MALE_VOICES = {
     de: /\b(?:markus|yannick|martin|stefan|conrad|michael|karsten)\b/i,
     en: /\b(?:alex|daniel|tom|david|mark|guy|george|ryan|james|richard|sean|ravi)\b/i,
@@ -210,9 +209,10 @@ class Study {
     it: /\b(?:cosimo|luca)\b/i,
   };
 
-  constructor($root) {
+  constructor($root, $answerMode, signal) {
     this.$root = $root;
-    this.events = new AbortController();
+    this.$answerMode = $answerMode;
+    this.signal = signal;
   }
 
   ready(startRecording) {
@@ -226,7 +226,7 @@ class Study {
     this.$mnemonic = this.$root.querySelector("[data-study-mnemonic]");
     this.hintUsed = this.$hint?.disabled ?? false;
     this.$recordStatus = this.$root.querySelector("[data-record-status]");
-    let signal = this.events.signal;
+    let signal = this.signal;
     let stopMedia = () => {
       window.speechSynthesis?.cancel();
       this.cancelCapture?.();
@@ -498,7 +498,9 @@ class Study {
       }
     });
     this.applyMode();
-    $answerMode.addEventListener("change", () => this.applyMode(), { signal });
+    this.$answerMode.addEventListener("change", () => this.applyMode(), {
+      signal,
+    });
     this.$actions.hidden = false;
     if (startRecording && this.canRecord && !this.$record.hidden) {
       this.$record.click();
@@ -507,7 +509,7 @@ class Study {
 
   applyMode() {
     if (!this.$solution.hidden) return;
-    let mode = $answerMode.value;
+    let mode = this.$answerMode.value;
     this.$reveal.hidden = mode !== "reveal";
     this.$record.hidden = mode !== "speak";
     this.$form.hidden = mode !== "text";
@@ -525,7 +527,7 @@ class Study {
     }
     if (!this.$form) return;
     this.$record.disabled = busy || !this.canRecord;
-    $answerMode.disabled = busy;
+    this.$answerMode.disabled = busy;
     this.$submit.disabled = busy;
     this.$answer.readOnly = busy;
   }
@@ -556,6 +558,7 @@ class Study {
       for (let $button of $buttons) $button.disabled = false;
       return;
     }
+    if (this.signal.aborted || navigation.request) return;
     playRating(result.rating);
     await this.loadNext(this.$ratings.action);
   }
@@ -576,12 +579,15 @@ class Study {
           result.error || "Die Antwort konnte nicht geprüft werden.",
         );
       }
+      if (this.signal.aborted) return;
       let transcript = result.transcript
         ? `Erkannt: „${result.transcript}“. `
         : "";
       this.$feedback.textContent = `Bewertung gespeichert: ${result.ratingLabel}. ${transcript}${result.feedback}`;
       if (Number.isInteger(result.remaining)) {
-        let $remaining = document.querySelector("[data-study-remaining]");
+        let $remaining = this.$root
+          .closest("main")
+          .querySelector("[data-study-remaining]");
         $remaining.textContent = result.remaining;
         $remaining.parentElement.dataset.remaining = result.remaining;
         if (result.remaining === 0) {
@@ -603,54 +609,8 @@ class Study {
     }
   }
 
-  async loadNext(url, startRecording = false) {
-    if (this.loadingNext) return;
-    this.loadingNext = true;
-    let $workspace = this.$root.closest("main");
-    $workspace.setAttribute("aria-busy", "true");
-    let nextPage;
-    let $nextWorkspace;
-    try {
-      let response = await fetch(url, { cache: "no-store" });
-      if (!response.ok || response.redirected) throw new Error();
-      nextPage = new DOMParser().parseFromString(
-        await response.text(),
-        "text/html",
-      );
-      $nextWorkspace = nextPage.querySelector("main.workspace");
-      let nextCsrf = nextPage.querySelector(
-        '[data-sync-shortcut] [name="csrf"]',
-      )?.value;
-      let nextMode = nextPage.querySelector("[data-answer-mode]");
-      if (
-        !$nextWorkspace ||
-        nextCsrf !== $syncShortcut.elements.namedItem("csrf").value ||
-        nextMode?.dataset.answerMode !== $answerMode?.dataset.answerMode
-      ) {
-        throw new Error();
-      }
-    } catch {
-      if (startRecording) {
-        try {
-          sessionStorage.setItem(Study.NEXT_AUDIO_KEY, url);
-        } catch {
-          // A full navigation still works without recording continuity.
-        }
-      }
-      window.location.assign(url);
-      return;
-    }
-    this.events.abort();
-    $workspace.className = $nextWorkspace.className;
-    $workspace.replaceChildren(...$nextWorkspace.childNodes);
-    document.title = nextPage.title;
-    if (window.location.href !== url) {
-      window.history.replaceState(window.history.state, "", url);
-    }
-    mountWorkspace($workspace, startRecording);
-    $workspace.removeAttribute("aria-busy");
-    window.scrollTo(0, 0);
-    if (!$workspace.inert) $workspace.focus({ preventScroll: true });
+  loadNext(url, startRecording = false) {
+    return navigation.open(new URL(url), { replace: true, startRecording });
   }
 
   reveal() {
@@ -702,7 +662,14 @@ class MediaStatus {
               this.$root.hasAttribute("data-watch-video") &&
               !result.pending
             ) {
-              window.location.reload();
+              if (navigation.request) {
+                window.setTimeout(check, MediaStatus.CHECK_INTERVAL);
+                return;
+              }
+              await navigation.open(new URL(window.location.href), {
+                replace: true,
+                keepScroll: true,
+              });
               return;
             }
             if ($stage && $stage.textContent !== result.label) {
@@ -774,20 +741,8 @@ class Editor {
     });
     this.$form.addEventListener("change", refresh);
     refresh();
-    this.$form.addEventListener("submit", () => {
-      let $button = this.$form.querySelector('button[type="submit"]');
-      $button.disabled = true;
-      setActionLabel($button, "Vorschau wird erstellt …", "⏳");
-    });
   }
 }
-
-let $syncForm = document.querySelector("[data-sync]");
-$syncForm?.addEventListener("submit", () => {
-  let $submit = $syncForm.querySelector('button[type="submit"]');
-  $submit.disabled = true;
-  setActionLabel($submit, "Synchronisierung läuft …", "🔄");
-});
 
 async function syncNow($form, $feedback) {
   let $submit = $form.querySelector('button[type="submit"]');
@@ -819,14 +774,90 @@ async function syncNow($form, $feedback) {
   $submit.disabled = false;
 }
 
-let $syncShortcut = document.querySelector("[data-sync-shortcut]");
-$syncShortcut?.addEventListener("submit", (event) => {
+let installPrompt;
+window.addEventListener("beforeinstallprompt", (event) => {
   event.preventDefault();
-  syncNow($syncShortcut, $syncShortcut.querySelector('[role="status"]'));
+  installPrompt = event;
 });
-function mountWorkspace($scope, startRecording) {
+
+function mountPage($scope, signal, startRecording) {
+  let $syncShortcut = $scope.querySelector("[data-sync-shortcut]");
+  $syncShortcut?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    syncNow($syncShortcut, $syncShortcut.querySelector('[role="status"]'));
+  });
+  let $answerMode = $scope.querySelector("[data-answer-mode]");
+  if ($answerMode) {
+    let key = "bruno-answer-mode:" + $answerMode.dataset.answerMode;
+    try {
+      $answerMode.value = localStorage.getItem(key) || "reveal";
+    } catch {
+      $answerMode.value = "reveal";
+    }
+    if (!$answerMode.value) $answerMode.value = "reveal";
+    $answerMode.addEventListener("change", () => {
+      try {
+        localStorage.setItem(key, $answerMode.value);
+      } catch {
+        return;
+      }
+    });
+    $answerMode.closest("label").hidden = false;
+  }
+  let $menu = $scope.querySelector("[data-mobile-menu]");
+  if ($menu) {
+    let $backdrop = $scope.querySelector("[data-mobile-menu-backdrop]");
+    let $main = $scope.querySelector("main");
+    let $skip = $scope.querySelector(".skip");
+    let mobile = window.matchMedia("(max-width: 700px)");
+    let isExpanded = () => $menu.getAttribute("aria-expanded") === "true";
+    let setExpanded = (expanded) => {
+      $menu.setAttribute("aria-expanded", String(expanded));
+      $main.inert = expanded;
+      $skip.inert = expanded;
+      if (!expanded && mobile.matches) $menu.focus();
+    };
+    $menu.addEventListener("click", () => setExpanded(!isExpanded()));
+    $backdrop.addEventListener("click", () => setExpanded(false));
+    document.addEventListener(
+      "keydown",
+      (event) => {
+        if (event.key === "Escape" && !event.defaultPrevented && isExpanded()) {
+          setExpanded(false);
+        }
+      },
+      { signal },
+    );
+    mobile.addEventListener(
+      "change",
+      () => {
+        if (!mobile.matches && isExpanded()) setExpanded(false);
+      },
+      { signal },
+    );
+    $answerMode?.addEventListener("change", () => {
+      if (isExpanded()) setExpanded(false);
+    });
+  }
+
+  let $install = $scope.querySelector("[data-install]");
+  if ($install) {
+    $install.hidden =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      navigator.standalone;
+    $install.addEventListener("click", async () => {
+      if (installPrompt) {
+        await installPrompt.prompt();
+        installPrompt = undefined;
+        return;
+      }
+      let $help = $scope.querySelector("#install-help");
+      $help.hidden = !$help.hidden;
+      $install.setAttribute("aria-expanded", String(!$help.hidden));
+    });
+  }
   let $study = $scope.querySelector(Study.SELECTOR);
-  if ($study) new Study($study).ready(startRecording);
+  if ($study) new Study($study, $answerMode, signal).ready(startRecording);
   for (let $element of $scope.querySelectorAll(MediaStatus.SELECTOR)) {
     new MediaStatus($element).ready();
   }
@@ -834,97 +865,193 @@ function mountWorkspace($scope, startRecording) {
   if ($completion) celebrateCompletion($completion);
   let $completionSync = $scope.querySelector("[data-completion-sync]");
   if ($syncShortcut && $completionSync) syncNow($syncShortcut, $completionSync);
-}
-
-let $menu = document.querySelector("[data-mobile-menu]");
-let $answerMode = document.querySelector("[data-answer-mode]");
-if ($menu) {
-  let $backdrop = document.querySelector("[data-mobile-menu-backdrop]");
-  let $main = document.getElementById("main");
-  let $skip = document.querySelector(".skip");
-  let mobile = window.matchMedia("(max-width: 700px)");
-  let isExpanded = () => $menu.getAttribute("aria-expanded") === "true";
-  let setExpanded = (expanded) => {
-    $menu.setAttribute("aria-expanded", String(expanded));
-    $main.inert = expanded;
-    $skip.inert = expanded;
-    if (!expanded && mobile.matches) $menu.focus();
-  };
-  $menu.addEventListener("click", () => setExpanded(!isExpanded()));
-  $backdrop.addEventListener("click", () => setExpanded(false));
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && !event.defaultPrevented && isExpanded()) {
-      setExpanded(false);
-    }
-  });
-  mobile.addEventListener("change", () => {
-    if (!mobile.matches && isExpanded()) setExpanded(false);
-  });
-  $answerMode?.addEventListener("change", () => {
-    if (isExpanded()) setExpanded(false);
-  });
-}
-
-if ($answerMode) {
-  let key = `bruno-answer-mode:${$answerMode.dataset.answerMode}`;
-  try {
-    $answerMode.value = localStorage.getItem(key) || "reveal";
-  } catch {
-    $answerMode.value = "reveal";
+  for (let $form of $scope.querySelectorAll(Editor.SELECTOR)) {
+    new Editor($form).ready();
   }
-  if (!$answerMode.value) $answerMode.value = "reveal";
-  $answerMode.addEventListener("change", () => {
-    try {
-      localStorage.setItem(key, $answerMode.value);
-    } catch {
-      return;
-    }
+  let $ratedReview = $scope.querySelector("[data-review-rating]");
+  if ($ratedReview) celebrateReview(Number($ratedReview.dataset.reviewRating));
+  let $batch = $scope.querySelector("[data-generate-batch]");
+  queueMicrotask(() => {
+    if ($batch?.isConnected) $batch.requestSubmit();
   });
-  $answerMode.closest("label").hidden = false;
 }
 
-let nextAudioPage;
-try {
-  nextAudioPage = sessionStorage.getItem(Study.NEXT_AUDIO_KEY);
-  sessionStorage.removeItem(Study.NEXT_AUDIO_KEY);
-} catch {
-  nextAudioPage = null;
-}
+class Navigation {
+  static SELECTOR = "#app";
+  static SCRIPT = "[data-app-script]";
+  static ERROR = "[data-navigation-error]";
 
-mountWorkspace(document, nextAudioPage === window.location.href);
-for (let $element of document.querySelectorAll(Editor.SELECTOR)) {
-  new Editor($element).ready();
-}
+  constructor($root) {
+    this.$root = $root;
+    this.route = window.location.pathname + window.location.search;
+    this.script = document.querySelector(Navigation.SCRIPT).getAttribute("src");
+  }
 
-let $ratedReview = document.querySelector("[data-review-rating]");
-if ($ratedReview) celebrateReview(Number($ratedReview.dataset.reviewRating));
+  ready() {
+    this.$root.addEventListener("click", (event) => {
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      )
+        return;
+      let $link = event.target.closest("a[href]");
+      if (
+        !$link ||
+        $link.hasAttribute("download") ||
+        ($link.target && $link.target !== "_self") ||
+        $link.getAttribute("href").startsWith("#")
+      )
+        return;
+      let url = new URL($link.href);
+      if (!this.accepts(url)) return;
+      event.preventDefault();
+      this.open(url);
+    });
+    this.$root.addEventListener("submit", (event) => this.submit(event));
+    window.addEventListener("popstate", () => {
+      if (this.route !== window.location.pathname + window.location.search) {
+        this.open(new URL(window.location.href), { replace: true });
+      }
+    });
+    this.mount();
+  }
 
-document.querySelector("[data-generate-batch]")?.requestSubmit();
+  accepts(url) {
+    return (
+      url.origin === window.location.origin &&
+      ["/", "/index.php"].includes(url.pathname) &&
+      !["media", "media-status"].includes(url.searchParams.get("view"))
+    );
+  }
 
-let installPrompt;
-window.addEventListener("beforeinstallprompt", (event) => {
-  event.preventDefault();
-  installPrompt = event;
-});
-document.querySelectorAll("[data-install]").forEach(($button) => {
-  if (
-    window.matchMedia("(display-mode: standalone)").matches ||
-    navigator.standalone
+  async submit(event) {
+    let $form = event.target;
+    if (event.defaultPrevented || $form.method !== "post") return;
+    let $button = event.submitter;
+    let url = new URL(
+      $button?.hasAttribute("formaction") ? $button.formAction : $form.action,
+    );
+    if (!this.accepts(url)) return;
+    event.preventDefault();
+    if (this.request?.post || $button?.disabled) return;
+    let body = new FormData($form, $button);
+    let progress = $form.matches(Editor.SELECTOR)
+      ? ["Vorschau wird erstellt …", "⏳"]
+      : $form.matches("[data-sync]")
+        ? ["Synchronisierung läuft …", "🔄"]
+        : null;
+    let previous;
+    if ($button) {
+      $button.disabled = true;
+      if (progress) {
+        previous = [
+          $button.querySelector(".action-label").textContent,
+          $button.querySelector(".action-emoji").textContent,
+        ];
+        setActionLabel($button, ...progress);
+      }
+    }
+    await this.open(url, { body });
+    if ($button?.isConnected) {
+      $button.disabled = false;
+      if (previous) setActionLabel($button, ...previous);
+    }
+  }
+
+  mount(startRecording = false) {
+    this.pageEvents = new AbortController();
+    mountPage(this.$root, this.pageEvents.signal, startRecording);
+  }
+
+  async open(
+    url,
+    { body, replace = false, startRecording = false, keepScroll = false } = {},
   ) {
-    $button.hidden = true;
-    return;
-  }
-  $button.addEventListener("click", async () => {
-    if (installPrompt) {
-      await installPrompt.prompt();
-      installPrompt = undefined;
-      return;
+    this.request?.controller.abort();
+    let controller = new AbortController();
+    let request = { controller, post: Boolean(body) };
+    this.request = request;
+    let $main = this.$root.querySelector("main");
+    $main.setAttribute("aria-busy", "true");
+    $main.querySelector(Navigation.ERROR)?.remove();
+    try {
+      let response = await fetch(url, {
+        method: body ? "POST" : "GET",
+        body,
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      let nextUrl = new URL(response.url);
+      if (!this.accepts(nextUrl)) throw new Error();
+      if (
+        !nextUrl.hash &&
+        nextUrl.pathname === url.pathname &&
+        nextUrl.search === url.search
+      ) {
+        nextUrl.hash = url.hash;
+      }
+      let page = new DOMParser().parseFromString(
+        await response.text(),
+        "text/html",
+      );
+      let $next = page.querySelector(Navigation.SELECTOR);
+      if (!$next) throw new Error();
+      if (controller.signal.aborted) return;
+      if (
+        page.querySelector(Navigation.SCRIPT)?.getAttribute("src") !==
+        this.script
+      ) {
+        window.location.assign(nextUrl);
+        return;
+      }
+      this.pageEvents.abort();
+      this.$root.replaceChildren(...$next.childNodes);
+      document.body.className = page.body.className;
+      document.title = page.title;
+      this.route = nextUrl.pathname + nextUrl.search;
+      if (nextUrl.href !== window.location.href) {
+        window.history[replace ? "replaceState" : "pushState"](
+          null,
+          "",
+          nextUrl,
+        );
+      }
+      this.mount(startRecording);
+      if (!keepScroll) {
+        let $anchor = document.getElementById(nextUrl.hash.slice(1));
+        (
+          $anchor ??
+          this.$root.querySelector("[autofocus]") ??
+          this.$root.querySelector("main")
+        ).focus({ preventScroll: true });
+        if ($anchor) $anchor.scrollIntoView();
+        if (!$anchor) window.scrollTo(0, 0);
+      }
+    } catch {
+      if (controller.signal.aborted) return;
+      let $notice = document.createElement("p");
+      $notice.className = "notice error";
+      $notice.dataset.navigationError = "";
+      $notice.setAttribute("role", "alert");
+      $notice.textContent = body
+        ? "Der Vorgang konnte nicht bestätigt werden. Bitte lade die Seite neu."
+        : "Die Seite konnte nicht geladen werden. Bitte erneut versuchen.";
+      this.$root.querySelector("main").prepend($notice);
+    } finally {
+      if (this.request === request) {
+        this.request = undefined;
+        $main.removeAttribute("aria-busy");
+      }
     }
-    let $help = document.getElementById($button.getAttribute("aria-controls"));
-    $help.hidden = !$help.hidden;
-    $button.setAttribute("aria-expanded", String(!$help.hidden));
-  });
-});
+  }
+}
+
+let navigation = new Navigation(document.querySelector(Navigation.SELECTOR));
+navigation.ready();
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("/sw.js").catch(() => {});
 }
