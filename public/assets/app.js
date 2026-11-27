@@ -876,6 +876,73 @@ function mountPage($scope, signal, startRecording) {
   });
 }
 
+class BackgroundMusic {
+  static PLAYER = "[data-background-music]";
+  static CONTROL = "[data-music-toggle]";
+  static PREFERENCE = "bruno-background-music";
+
+  constructor($audio) {
+    this.$audio = $audio;
+    this.$audio.volume = 0.5;
+    this.enabled = true;
+    try {
+      this.enabled = localStorage.getItem(BackgroundMusic.PREFERENCE) !== "off";
+    } catch {
+      // The toggle still works for this session without storage.
+    }
+  }
+
+  ready() {
+    document.addEventListener("click", (event) => {
+      let $control = event.target.closest(BackgroundMusic.CONTROL);
+      if ($control) {
+        this.enabled = !this.enabled;
+        try {
+          localStorage.setItem(
+            BackgroundMusic.PREFERENCE,
+            this.enabled ? "on" : "off",
+          );
+        } catch {
+          // Keep the preference in memory.
+        }
+        this.update($control);
+        return;
+      }
+      if (event.isTrusted) this.play();
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.isTrusted && !event.target.closest(BackgroundMusic.CONTROL))
+        this.play();
+    });
+  }
+
+  play() {
+    if (
+      this.enabled &&
+      document.body.classList.contains("signed-in") &&
+      this.$audio.paused
+    ) {
+      this.$audio.play().catch(() => {});
+    }
+  }
+
+  update($control) {
+    if ($control) {
+      setActionLabel(
+        $control,
+        this.enabled ? "Musik stoppen" : "Musik starten",
+        "♪",
+      );
+      $control.hidden = false;
+    }
+    if (!$control || !this.enabled) {
+      this.$audio.pause();
+      return;
+    }
+    this.play();
+  }
+}
+
 class Navigation {
   static SELECTOR = "#app";
   static SCRIPT = "[data-app-script]";
@@ -967,6 +1034,7 @@ class Navigation {
   mount(startRecording = false) {
     this.pageEvents = new AbortController();
     mountPage(this.$root, this.pageEvents.signal, startRecording);
+    backgroundMusic.update(this.$root.querySelector(BackgroundMusic.CONTROL));
   }
 
   async open(
@@ -1081,6 +1149,10 @@ class Navigation {
   }
 }
 
+let backgroundMusic = new BackgroundMusic(
+  document.querySelector(BackgroundMusic.PLAYER),
+);
+backgroundMusic.ready();
 let navigation = new Navigation(document.querySelector(Navigation.SELECTOR));
 navigation.ready();
 if ("serviceWorker" in navigator) {

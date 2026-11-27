@@ -75,7 +75,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
     <link rel="manifest" href="/manifest.webmanifest?v=4">
     <link rel="stylesheet" href="/assets/app.css?v=50">
     <script defer src="/assets/canvas-confetti-1.9.4.js"></script>
-    <script defer src="/assets/app.js?v=43" data-app-script></script>
+    <script defer src="/assets/app.js?v=44" data-app-script></script>
 </head>
 <body class="<?= $account === null ? 'guest' : 'signed-in' ?>">
 <div id="app">
@@ -141,6 +141,7 @@ if ($view === 'create' && !isset($_POST['type'])) {
                     <a href="<?= $route('decks') ?>" <?= in_array($view, ['decks', 'deck'], strict: true) ? 'aria-current="page"' : '' ?>><?= $actionLabel(text: 'Stapel verwalten', emoji: '🗂️') ?></a>
                     <a href="<?= $route('users') ?>" <?= in_array($view, ['users', 'profile'], strict: true) ? 'aria-current="page"' : '' ?>><?= $actionLabel(text: 'Benutzer', emoji: '👥') ?></a>
                     <a href="<?= $route('maintenance') ?>" <?= $view === 'maintenance' ? 'aria-current="page"' : '' ?>><?= $actionLabel(text: 'Wartung', emoji: '⏱️') ?></a>
+                    <button type="button" data-music-toggle hidden><?= $actionLabel(text: 'Musik stoppen', emoji: '♪') ?></button>
                     <button type="button" aria-expanded="false" aria-controls="install-help" data-install><?= $actionLabel(text: 'App installieren', emoji: '📲') ?></button>
                     <form method="post" action="/">
                         <?php $hidden(verb: 'logout'); ?>
@@ -642,5 +643,6 @@ if ($view === 'create' && !isset($_POST['type'])) {
     </div>
 <?php endif; ?>
 </div>
+<audio data-background-music src="/assets/chiptune.mp3" loop preload="none" hidden></audio>
 </body>
 </html>
